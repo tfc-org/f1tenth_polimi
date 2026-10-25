@@ -18,17 +18,6 @@ Pick the service for your machine. `arm` is used in the examples; replace it wit
 - `build/`, `install/`, `log/` live in Docker volumes (`build_arm`, …), not in the repo: build output stays out of git and is kept between container restarts.
 - Ports bind to `127.0.0.1` only.
 
-## Docker Desktop from the command line (macOS)
-
-```bash
-docker desktop start              # or: open -a Docker
-docker desktop status
-docker desktop restart
-docker desktop stop
-```
-
-No Docker Desktop settings are needed for this repo.
-
 ## Everyday commands
 
 The container runs in the background; you open as many shells into it as you need.
