@@ -1,10 +1,58 @@
-# GitHub access and branch rules
+# Contributing
+
+Every change reaches a shared branch through a pull request with one approval. This page covers the fork and submodule workflow, then who can review and merge.
+
+## Git and submodules
+
+The car's drivers live in a separate repository that we forked, linked here as a submodule. That keeps upstream's history intact and lets us pull their fixes, at the price of one extra commit whenever we change the fork.
+
+- `ros2_ws/src/f1tenth_system` is a submodule: our fork `tfc-org/f1tenth_system_polimi`, branch `humble-polimi`.
+- Its own submodules: `vesc` (`ros2`), `ackermann_mux` (`foxy-devel`, builds on Humble), `teleop_tools` (`humble-devel`).
+- `setup_git.sh` adds `upstream` → `f1tenth/f1tenth_system`.
+
+### Edit the fork (two commits)
+
+A submodule is a pointer to one commit of the other repository. Changing the fork therefore takes a commit there, then a commit here that moves the pointer:
+
+```bash
+cd ros2_ws/src/f1tenth_system
+git switch humble-polimi                  # submodules start detached
+git add -A && git commit -m "..." && git push              # 1) fork
+cd ../../..
+git add ros2_ws/src/f1tenth_system
+git commit -m "Bump f1tenth_system: ..." && git push       # 2) pointer
+```
+
+`push.recurseSubmodules=check` blocks step 2 if step 1 wasn't pushed.
+
+### Sync with upstream
+
+To bring in what the F1TENTH maintainers changed since our fork:
+
+```bash
+cd ros2_ws/src/f1tenth_system
+git fetch upstream
+git log --oneline humble-polimi..upstream/humble-devel     # preview
+git switch humble-polimi && git merge upstream/humble-devel
+git submodule update --init --recursive
+git push
+```
+
+Then bump the pointer as in step 2.
+
+### Pick up someone else's bump
+
+```bash
+git pull                                  # submodule.recurse moves the submodule too
+```
+
+## GitHub access and branch rules
 
 *Snapshot of the `tfc-org` settings, read on 22 October 2026, repo names updated after the rename on 24 October 2026. GitHub is the source of truth: if this page and GitHub disagree, GitHub wins and this page needs an update.*
 
 This page says who can read, push, review and merge in our three repos, and how the rulesets protect the shared branches.
 
-## Repos
+### Repos
 
 | Repo | What | Default branch | Upstream |
 |---|---|---|---|
@@ -14,7 +62,7 @@ This page says who can read, push, review and merge in our three repos, and how 
 
 The org is on the **Free** plan. Org-level rulesets need GitHub Team, so each repo has its own ruleset.
 
-## People and teams
+### People and teams
 
 ```
 tfc-org
@@ -28,7 +76,7 @@ tfc-org
 - **Parent and child team.** A child team inherits the parent team's repo access, and gets pinged when someone @mentions the parent. Anything given to the child stays with the child. `F1tenth_PoliMI_Admins` is the child, so its members get the team's write access plus anything given to the admins team, such as its bypass on `f1tenth_polimi`.
 - **Member listing.** Listing the members of `F1tenth_Team` includes the members of its child teams.
 
-## Permissions
+### Permissions
 
 | Who | How they get it | All three repos |
 |---|---|---|
@@ -41,7 +89,7 @@ tfc-org
 - **Write** lets a user push branches and approve PRs. The rulesets below still block direct pushes to protected branches.
 - **Admin** lets a user change repo settings and rulesets. Org owners can edit every ruleset, even when they are not on its bypass list.
 
-## Rulesets
+### Rulesets
 
 Each ruleset is `active` and targets branches only. Tags are not protected.
 
@@ -65,14 +113,14 @@ The branch patterns use GitHub's `fnmatch` syntax: `*` matches any characters ex
 
 On `f1tenth_polimi` the repo setting also allows squash merges, but the ruleset allows only merge and rebase, so squash is blocked on `main`.
 
-### What each rule means
+#### What each rule means
 
 - **Require a PR.** Nobody can push straight to a protected branch, admins included. Every change arrives through a merged PR.
 - **Required reviewer team.** At least one approval must come from a member of that team, and that member needs write access. The PR author's approval never counts: GitHub does not let the author approve their own PR. Whether a child-team member's approval counts for the parent team has not been tested.
 - **Restrict updates.** Only bypass actors can update the branch. Merging a PR updates it, so on the two forks only repo admins can merge. "Sync fork" from upstream is still allowed.
 - **Bypass, PR only.** The bypass works only at merge time, on a PR. A bypass actor still cannot push directly or force-push. On their own PR they see "Merge without waiting for requirements to be met (bypass rules)", which lets them merge without an approval. This is the only way to merge your own PR without someone else's review.
 
-## Who can do what today
+### Who can do what today
 
 | Action | `f1tenth_polimi` `main` | Fork protected branches |
 |---|---|---|
@@ -85,7 +133,7 @@ On `f1tenth_polimi` the repo setting also allows squash merges, but the ruleset 
 
 If a PR's author is the only member of the required reviewer team, nobody else can approve it, so the only way to merge it is a bypass merge.
 
-## Differences between the repos
+### Differences between the repos
 
 These differences are what the snapshot shows. They are not decisions recorded anywhere else:
 

@@ -61,11 +61,16 @@ simcar                            # simulator as the car: map spielberg, laser s
 
 Once the image is built, `bash scripts/sim/start.real.sh` does the last four lines in one go.
 
+- `setup_git.sh` fetches the submodules and sets `push.recurseSubmodules=check`, `submodule.recurse=true` and an `upstream` remote in the fork. Safe to re-run.
+- `HOST_UID` / `HOST_GID` (from `id -u`, `id -g`) make the container user match yours, so files created in the bind-mounted folders stay yours on the host.
+- Pick the service for your machine: `arm` Apple Silicon, `x86` PC, `jet` Orin Nano on the car. The first build takes a while (gym and gym_ros).
+- Code, configs and maps are bind-mounted, so most changes need only `cb`. Rebuild the image only when the `Dockerfile`, a `package.xml` (rosdep runs at build time) or `GYM_REF` / `GYM_ROS_REF` changes. Bump the pins on purpose, never follow the branch.
+
 Then open Foxglove at `ws://localhost:8765` to see the track, the car and the scan. The car stands still until it gets a command: [Simulator](docs/software/simulator.md) shows how to drive it.
 
 ## Documentation
 
-New here: read Setup, then Simulator. The others are references for when you need them.
+New here: Quick start above, then Simulator. The others are references for when you need them.
 
 Requirements and design are LaTeX documents, built from `docs/` with `make build` (sources in `docs/software/Source_Documentation/`):
 
@@ -79,12 +84,9 @@ Runbooks:
 
 | Doc | Contents |
 |---|---|
-| [Setup](docs/software/setup.md) | Stack, clone, git config, `.env`, first build |
-| [Docker](docs/software/docker.md) | Services, networking, day-to-day commands, car bringup, cleanup |
-| [Python and IDE](docs/software/python.md) | PyCharm interpreter in the container |
+| [Docker](docs/software/docker.md) | Services, networking, day-to-day commands, rebuilds, car bringup, PyCharm interpreter, cleanup |
 | [Simulator](docs/software/simulator.md) | `simcar`: run, map / laser configs, live parameters, Foxglove, teleop, reset |
-| [Git and submodules](docs/software/git.md) | Editing and syncing the f1tenth_system fork |
-| [GitHub access](docs/software/github-access.md) | Teams, permissions, rulesets, who can review, merge and bypass |
+| [Contributing](CONTRIBUTING.md) | Fork and submodule workflow, teams, permissions, rulesets, who can review and merge |
 
 ## License
 

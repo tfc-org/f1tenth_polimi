@@ -1,6 +1,6 @@
 % ============================================================================
 % TDD --- F1tenth PoliMI car
-% Source: car-interface design proposal (24 Oct 2026), docs/software/{docker,setup,git,github-access}.md,
+% Source: car-interface design proposal (24 Oct 2026), README.md, CONTRIBUTING.md, docs/software/docker.md,
 %         car.md, the LiDAR and camera comparisons and the chassis sourcing study (folded in, removed),
 %         hardware/bom/master_bom.xlsx, simulation plan 01.4, scope.md OI-10 and OI-13 (via RASD_F1tenth)
 % ============================================================================
@@ -37,7 +37,7 @@ This document defines how the car's software is built: the layers of the stack, 
   \item \code{RASD\_F1tenth} --- requirements refined here.
   \item Car-interface design proposal, 24 Oct 2026 (the source of \cref{sec:arch,sec:interfaces}).
   \item Simulation plan 01.4, migration to Jazzy, the JAX gym and the simulator in our fork.
-  \item Runbooks in \code{docs/software/}: \code{setup.md}, \code{docker.md}, \code{git.md}, \code{github-access.md}.
+  \item The README (first-time setup), \code{CONTRIBUTING.md} (git workflow, access, rulesets) and the runbooks \code{docs/software/docker.md} and \code{simulator.md}.
   \item \code{TDD\_Gym}, the simulator's design.
   \item Hardware studies: LiDAR (23 Sep 2026), camera (7 Oct 2026), chassis (24 Sep 2026), folded into \cref{sec:hwsel}.
 \end{itemize}
@@ -299,7 +299,7 @@ TF \code{base\_link}\arrowto\code{laser}, \code{camera\_link} & static TF & \cod
   \item \textbf{Physical safety comes first:} the mux, its locks and AEB (FR-SAF) are the safety design; they run on the car and in the simulator unchanged (DEC-03).
   \item \textbf{Network:} on Mac and PC the container's ports bind to 127.0.0.1 only. The car's container uses host networking; ROS traffic on the car's network is not authenticated \tbd.
   \item \textbf{Secrets and personal data:} none in the stack. Camera images may show people in the room; nothing is recorded by default.
-  \item \textbf{Repository access:} protected branches and required reviews, as in the runbook \code{github-access.md}.
+  \item \textbf{Repository access:} protected branches and required reviews, as in \code{CONTRIBUTING.md}.
 \end{itemize}
 
 % ============================================================================
