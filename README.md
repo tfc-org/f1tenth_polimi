@@ -8,18 +8,18 @@ F1TENTH is a 1/10-scale autonomous racing platform: a modified RC car with onboa
 
 - **Hardware:** parts selection, bill of materials, datasheets, CAD and wiring.
 - **Software:** a ROS 2 workspace (`ros2_ws/`) with the perception, localization (SLAM), planning and control stack, and a simulator that behaves like the car so the stack can be written before the car exists.
-- **Documentation:** design decisions, component comparisons and notes.
+- **Documentation:** requirements and design as LaTeX documents (RASD, TDD), runbooks in Markdown.
 
-Our course setup is not a standard F1TENTH track: the car races in a room on a track drawn with tape on the floor. See [Project scope](docs/scope.md).
+Our course setup is not a standard F1TENTH track: the car races in a room on a track drawn with tape on the floor. See the [requirements (RASD)](docs/software/PDF_Documentation/car/.RASD_F1tenth.latest.pdf).
 
 > 🚧 Work in progress: the hardware is still being selected and the car is not built. Meanwhile the software is developed against the simulator.
 
 ## Hardware
 
 - **Compute:** NVIDIA Jetson Orin Nano Developer Kit
-- **LiDAR:** Orbbec Pulsar SL450 (see [LiDAR comparison](docs/hardware/LiDAR_comparison_F1TENTH.md))
-- **Camera:** Orbbec Gemini 335L (see [camera comparison](docs/hardware/Camera_comparison_F1TENTH.md))
-- **Chassis:** Traxxas Ford Fiesta ST Rally VXL (74276-4); see [chassis sourcing](docs/hardware/Fiesta_ST_Rally_VXL_sourcing_F1TENTH.md)
+- **LiDAR:** Orbbec Pulsar SL450 (see the [TDD](docs/software/PDF_Documentation/car/.TDD_F1tenth.latest.pdf), Hardware Selection)
+- **Camera:** Orbbec Gemini 335L (see the [TDD](docs/software/PDF_Documentation/car/.TDD_F1tenth.latest.pdf), Hardware Selection)
+- **Chassis:** Traxxas Ford Fiesta ST Rally VXL (74276-4); see the [TDD](docs/software/PDF_Documentation/car/.TDD_F1tenth.latest.pdf), Hardware Selection
 - **Full parts list:** [Master BOM](hardware/bom/master_bom.xlsx)
 
 ## Repository structure
@@ -27,9 +27,9 @@ Our course setup is not a standard F1TENTH track: the car races in a room on a t
 ```
 f1tenth_polimi/
 ├── docs/
-│   ├── scope.md          # What the car must do, where, and what we deliver
-│   ├── hardware/         # Component comparisons and hardware decisions
-│   └── software/         # Setup, Docker, Python/IDE, simulator, git, car
+│   ├── Latex_Templates/  # Submodule: LaTeX templates and docbuild
+│   ├── Makefile          # make status / build / release for the documents
+│   └── software/         # Runbooks (.md), Source_Documentation/ (.tex), PDF_Documentation/
 ├── hardware/             # BOM, datasheets, CAD, electronics
 ├── docker/
 │   ├── ros/              # ROS image (ros:humble + deps + simulator)
@@ -67,19 +67,24 @@ Then open Foxglove at `ws://localhost:8765` to see the track, the car and the sc
 
 New here: read Setup, then Simulator. The others are references for when you need them.
 
+Requirements and design are LaTeX documents, built from `docs/` with `make build` (sources in `docs/software/Source_Documentation/`):
+
+| Document | Contents |
+|---|---|
+| [RASD_F1tenth](docs/software/PDF_Documentation/car/.RASD_F1tenth.latest.pdf) | Environment (room, taped track), what the car must do, acceptance, summer school exercises, open items |
+| [TDD_F1tenth](docs/software/PDF_Documentation/car/.TDD_F1tenth.latest.pdf) | Stack layers, car interface, deployment, design decisions, hardware selection (LiDAR, camera, chassis) |
+| [TDD_Gym](docs/software/PDF_Documentation/sim/.TDD_Gym.latest.pdf) | The simulator: gym, model nodes and their parameters, sim vs car, known limits |
+
+Runbooks:
+
 | Doc | Contents |
 |---|---|
-| [Project scope](docs/scope.md) | Environment (room, taped track), what the car must do, summer school exercises and the 30L delivery |
 | [Setup](docs/software/setup.md) | Stack, clone, git config, `.env`, first build |
-| [Docker](docs/software/docker.md) | Services, networking, day-to-day commands, cleanup |
+| [Docker](docs/software/docker.md) | Services, networking, day-to-day commands, car bringup, cleanup |
 | [Python and IDE](docs/software/python.md) | PyCharm interpreter in the container |
-| [Simulator](docs/software/simulator.md) | `simcar`: run, map / laser configs, model nodes and parameters, Foxglove, teleop, reset, topics |
+| [Simulator](docs/software/simulator.md) | `simcar`: run, map / laser configs, live parameters, Foxglove, teleop, reset |
 | [Git and submodules](docs/software/git.md) | Editing and syncing the f1tenth_system fork |
 | [GitHub access](docs/software/github-access.md) | Teams, permissions, rulesets, who can review, merge and bypass |
-| [Car](docs/software/car.md) | Bringup and to-dos (car not here yet) |
-| [LiDAR comparison](docs/hardware/LiDAR_comparison_F1TENTH.md) | Candidate LiDARs and pick |
-| [Camera comparison](docs/hardware/Camera_comparison_F1TENTH.md) | Candidate cameras and pick |
-| [Chassis sourcing](docs/hardware/Fiesta_ST_Rally_VXL_sourcing_F1TENTH.md) | Fiesta ST Rally VXL and parts |
 
 ## License
 

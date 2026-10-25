@@ -90,6 +90,19 @@ docker compose build --no-cache arm        # from scratch
 docker compose up -d --force-recreate arm  # use the new image
 ```
 
+## Car bringup (`jet`)
+
+The car is not built yet, so this has not run on hardware. It starts the drivers: VESC, joystick teleop, the command mux and the static transform to the LiDAR.
+
+```bash
+docker compose build jet
+docker compose up -d jet
+docker compose exec jet bash
+ros2 launch f1tenth_stack no_lidar_bringup_launch.py
+```
+
+The VESC packages build with the rest of the workspace: `cb`. What is still missing before the first run is in the TDD's open items (`docs/software/PDF_Documentation/car/`).
+
 ## Optional noVNC (RViz)
 
 Foxglove covers day-to-day visualization. For RViz, this side container serves a desktop in the browser.

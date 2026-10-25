@@ -1,7 +1,8 @@
 % ============================================================================
 % TDD --- F1tenth PoliMI car
-% Source: car-interface design proposal (24 Oct 2026), docs/software/{car,docker,setup,git,github-access}.md,
-%         hardware/bom/master_bom.xlsx, simulation plan 01.4, docs/scope.md (OI-10, OI-13)
+% Source: car-interface design proposal (24 Oct 2026), docs/software/{docker,setup,git,github-access}.md,
+%         car.md, the LiDAR and camera comparisons and the chassis sourcing study (folded in, removed),
+%         hardware/bom/master_bom.xlsx, simulation plan 01.4, scope.md OI-10 and OI-13 (via RASD_F1tenth)
 % ============================================================================
 \documentclass[11pt,a4paper]{article}
 
@@ -16,7 +17,7 @@
 
 \begin{document}
 \docfrontmatter{
-0.01 & 2026-10-25 & F1tenth PoliMI team & Initial draft from the car-interface design proposal and the runbooks \\
+0.01 & 2026-10-25 & F1tenth PoliMI team & Initial draft from the car-interface design proposal and the runbooks; \code{car.md} and the hardware studies folded in (\cref{sec:hwsel}) \\
 }
 
 % ============================================================================
@@ -28,7 +29,7 @@ This document defines how the car's software is built: the layers of the stack, 
 \subsection{Scope}
 \begin{itemize}
   \item \textbf{In scope:} the stack on the car, the car interface (topics and frames), the car's hardware layer, the repositories, the Docker images, the development standards.
-  \item \textbf{Out of scope:} the simulator's internals (the gym, the bridge, \code{polimi\_sim}). Here the simulator appears only as the second implementation of the car interface (\code{hw:=sim}). It gets its own documents, \code{RASD\_Gym} and \code{TDD\_Gym} \tbd.
+  \item \textbf{Out of scope:} the simulator's internals (the gym, the bridge, \code{polimi\_sim}). Here the simulator appears only as the second implementation of the car interface (\code{hw:=sim}). Its design is in \code{TDD\_Gym}.
 \end{itemize}
 
 \subsection{References}
@@ -36,7 +37,9 @@ This document defines how the car's software is built: the layers of the stack, 
   \item \code{RASD\_F1tenth} --- requirements refined here.
   \item Car-interface design proposal, 24 Oct 2026 (the source of \cref{sec:arch,sec:interfaces}).
   \item Simulation plan 01.4, migration to Jazzy, the JAX gym and the simulator in our fork.
-  \item Runbooks in \code{docs/software/}: \code{setup.md}, \code{docker.md}, \code{car.md}, \code{git.md}, \code{github-access.md}.
+  \item Runbooks in \code{docs/software/}: \code{setup.md}, \code{docker.md}, \code{git.md}, \code{github-access.md}.
+  \item \code{TDD\_Gym}, the simulator's design.
+  \item Hardware studies: LiDAR (23 Sep 2026), camera (7 Oct 2026), chassis (24 Sep 2026), folded into \cref{sec:hwsel}.
 \end{itemize}
 
 \subsection{Status Conventions}
@@ -219,11 +222,11 @@ Today the car starts with \code{f1tenth\_stack}'s \code{no\_lidar\_bringup\_laun
 \midrule
 \endhead
 DEC-01 & ROS~2 Jazzy on every image \dec & Humble ends on 31 May 2027, before or during the summer school; Jazzy is supported to 31 May 2029. Lyrical is too new: no \code{f1tenth\_gym\_ros} branch, no JetPack for its Ubuntu. (OI-13, 21 Oct 2026.) \\
-DEC-02 & One image rebuild adds \code{nav2\_amcl}, \code{robot\_localization}, \code{image\_transport\_plugins}, \code{cv\_bridge} \dec & In the Jazzy base apt layer, so AMCL and the EKF can be tried before any stack package exists. Python nodes never import \code{cv\_bridge} (it breaks under the gym's NumPy~2) and convert images with NumPy. (OI-10, 22 Oct 2026.) \\
+DEC-02 & One image rebuild adds \code{nav2\_amcl}, \code{robot\_localization}, \code{image\_transport\_plugins}, \code{cv\_bridge} \dec & In the Jazzy base apt layer, so AMCL and the EKF can be tried before any stack package exists. \code{cv\_bridge} brings apt's \code{python3-opencv}; the apt layer goes first and pip after, so the gym's pip \code{cv2} and NumPy shadow apt's. Python nodes never import \code{cv\_bridge} (its Python module breaks under the gym's NumPy~2) and convert images with NumPy; C++ nodes are unaffected. A \code{numpy<2} pin is no fallback, as the JAX gym needs NumPy $\geq$ 2.2: if a Python node ever needs \code{cv\_bridge}, build it from source against NumPy~2. Check after the rebuild: gate G-M2, plan 01.4 M1.2. (OI-10, 22 Oct 2026.) \\
 DEC-03 & Seam below the mux, at \code{/ackermann\_cmd} \prop & The simulator replaces the VESC, the motor, the chassis and the sensors, nothing above them. With the mux above the seam, takeover, deadman and AEB are the same nodes in both places. (R1) \\
 DEC-04 & Plain topics are the contract; no extension mechanism \prop & Our launch includes the fork's launch with two arguments; one switch, \code{hw:=}. No new code in the fork, and the contract can be checked with \code{ros2 topic info} on both sides. (R2) \\
 DEC-05 & \code{polimi\_bringup} holds the contract and the launches; one package per function for the logic \prop & Functions have different dependencies (the camera stack versus none) and their own tests; one bringup package keeps how it all starts in one place. (R3) \\
-DEC-06 & Our own \code{car.launch.py}, not \code{f1tenth\_stack}'s bringup \prop & Upstream's \code{bringup\_launch.py} starts the Hokuyo driver, its own mux and a hard-coded laser TF, none of which match our car. \code{f1tenth\_system} stays a pure upstream fork: the scope's ``our fork, extended with all our drivers'' becomes ``its driver packages, launched by our bringup''. (R4) \\
+DEC-06 & Our own \code{car.launch.py}, not \code{f1tenth\_stack}'s bringup \prop & Upstream's \code{bringup\_launch.py} starts the Hokuyo driver, its own mux and a hard-coded laser TF, none of which match our car. \code{f1tenth\_system} stays a pure upstream fork: the scope's ``our fork, extended with all our drivers'' (\code{RASD\_F1tenth} C-022) becomes ``its driver packages, launched by our bringup''. (R4) \\
 DEC-07 & Our own \code{mux.yaml}, in \code{polimi\_bringup/config/} \prop & Starts from today's values (joystick 100, autonomy 10). OI-09 adds the e-stop and deadman locks and the AEB input, and those are ours, not upstream's. (R5) \\
 DEC-08 & The simulator fork runs from a bare clone \prop & \code{polimi\_sim} drops the mux node and its \code{ackermann\_mux} and \code{f1tenth\_stack} dependencies, and gains \code{teleop\_topic} (default \code{ackermann\_cmd}). Replaces decision~8 of plan 01.4, which made the fork depend on \code{f1tenth\_system}. (R6) \\
 DEC-09 & The hardware side publishes the mount TF, from the same files \prop & Car: \code{car.launch.py} from \code{config/car/*.yaml}. Simulator: \code{polimi\_sim} from the same files via \code{config\_dir}. One file, two readers. (R7) \\
@@ -251,6 +254,7 @@ The measured car lives in \code{ros2\_ws/config/}, written once and read by both
 \code{polimi\_bringup/config/mux.yaml} \prop & mux & priorities, timeouts (0.2\,s), locks \\
 \code{polimi\_bringup/config/} slam, amcl, ekf \prop & logic & node parameters \\
 \code{vesc.yaml} (\code{f1tenth\_stack}) & VESC driver & gains, servo offset, wheelbase \\
+\code{joy\_teleop.yaml} (\code{f1tenth\_stack}) & joystick teleop & button map: LB enables \code{/teleop}; RB's \code{autonomous\_control} gates nothing today (OI-09) \\
 \bottomrule
 \end{tabularx}
 
@@ -403,14 +407,205 @@ As in \code{RASD\_F1tenth}: AC-V1-01 to 04 for the base platform, AC-V2-A or AC-
 T-01 & Deadman and e-stop in the simulator & Docker Desktop on macOS has no USB passthrough, so there is no joystick in the container. The locks need a stand-in for \code{/joy}: a keyboard key that toggles the deadman, or a joystick read on the Mac and bridged in. Settle with OI-09. \\
 T-02 & Camera and IMU topic names [VERIFY] & From \code{orbbec\_camera}'s Gemini launch, once the camera is on the bench; the simulator's camera model uses the same names. \\
 T-03 & LiDAR frame name [VERIFY] & From \code{orbbec\_camera}'s \code{lidar.launch.py}; set it to \code{laser} in \code{car.launch.py} if it differs. \\
-T-04 & Confirm DEC-03 to DEC-10 & The proposal amends plan 01.4: decision 8 withdrawn, M2 and M3 change, the scope's ``Drivers'' line is reworded. \\
+T-04 & Confirm DEC-03 to DEC-10 & The proposal amends plan 01.4: decision 8 withdrawn, M2 and M3 change, \code{RASD\_F1tenth} C-022 is reworded. \\
 T-05 & Wheelbase & \code{vesc.yaml} has 0.25\,m, the simulated odometry the gym's 0.3302\,m. Measure the car and align both. \\
 T-06 & Mount measurements [MEASURE] & \code{laser\_mount.yaml} holds f1tenth's defaults; the camera mount file does not exist yet. \\
 T-07 & VESC device & udev rule on the Jetson for \code{/dev/sensors/vesc}, expected by \code{vesc.yaml}. \\
 T-08 & \code{orbbec\_camera} version & 2.9.3 is in the Jazzy apt repo; check it with the SL450's firmware (plan 01.4, M-O8). \\
-T-10 & JetPack and Ubuntu 24.04 [VERIFY] & JetPack 6 is based on Ubuntu 22.04. Check that the \code{jet} service runs a \code{ros:jazzy} (24.04) container with \code{runtime: nvidia} on the Orin Nano. \\
 T-09 & Unmatched remap & Today's bringup remaps \code{ackermann\_cmd\_out}\arrowto\code{ackermann\_drive}, which matches nothing: the mux publishes \code{ackermann\_cmd}. Gone with DEC-06. \\
+T-10 & JetPack and Ubuntu 24.04 [VERIFY] & JetPack 6 is based on Ubuntu 22.04. Check that the \code{jet} service runs a \code{ros:jazzy} (24.04) container with \code{runtime: nvidia} on the Orin Nano. \\
+T-11 & Battery connector [BOM GAP] & The VESC has XT90; the BOM has no TRX (Traxxas High-Current) to XT90 adapter. Check the Zeee 3S packs' connector (\cref{sec:chassis}). \\
 \bottomrule
 \end{tabularx}
+
+% ============================================================================
+\appendix
+\section{Hardware Selection}\label{sec:hwsel}
+% ============================================================================
+The trade studies behind the picks in \code{RASD\_F1tenth} C-010, C-012 and C-013. Prices are the ones seen on the date of each study; the master BOM holds the current vendors and prices.
+
+\subsection{LiDAR (study of 23 Sep 2026)}\label{sec:lidar}
+\begin{takeaway}
+\textbf{Pick: Orbbec Pulsar SL450} (C-012). For F1TENTH the scan rate matters far more than range: at 8\,m/s a 10\,Hz LiDAR lets the car move 80\,cm between scans, which makes scan matching and localization much harder. The SL450 is the only candidate that matches the Hokuyo UST-10LX, the standard F1TENTH LiDAR (40\,Hz, 0.25\textdegree, 270\textdegree, about EUR~1,200).
+\end{takeaway}
+
+The study was written for a track bounded by walls. The track is now tape on the floor (RASD C-001 to C-005): the LiDAR cannot see it and maps the room, so ``track'' about range or SLAM reads ``room''. The pick is unchanged.
+
+\begin{small}
+\begin{tabularx}{\textwidth}{@{}L{2.4cm} L{1.4cm} L{1.0cm} L{1.3cm} L{1.5cm} L{1.0cm} L{1.0cm} Y@{}}
+\toprule
+\hd{Model} & \hd{Price} & \hd{Rate} & \hd{Res.} & \hd{Range 70--90\% / 10\%} & \hd{FOV} & \hd{Weight} & \hd{Interface, principle} \\
+\midrule
+\endhead
+Orbbec Pulsar SL450 & EUR~531 & \textbf{40\,Hz} & 0.2\textdegree & 45 / 15\,m & 270\textdegree & 320\,g & Ethernet; dToF, 72\,kHz, IP65 \\
+Richbeam Lakibeam 1L & EUR~549 & 30\,Hz & 0.25\textdegree & 40 / 20\,m & 270\textdegree & 160\,g & Ethernet, USB-C; dToF, 45\,kHz, 9--36\,V \\
+Richbeam Lakibeam 1 & EUR~439 & 30\,Hz & 0.25\textdegree & 25 / 15\,m & 270\textdegree & 160\,g & Ethernet, USB-C; dToF, 43.2\,kHz, 9--36\,V \\
+Richbeam Lakibeam 1S & EUR~340 & 20\,Hz & 0.5\textdegree & 15 / 10\,m & 270\textdegree & 160\,g & Ethernet, USB-C; dToF, 6--36\,V \\
+Slamtec RPLIDAR S3 & EUR~549 & 20\,Hz & 0.225\textdegree & 40 / 15\,m & 360\textdegree & 115\,g & UART 1\,Mbps; dToF, 5\,V \\
+LSLIDAR N301 & EUR~1,100 & 20\,Hz & 0.36\textdegree & 30\,m / -- & 360\textdegree & 406\,g & Ethernet; ToF, IP67 \\
+Slamtec RPLIDAR A2M12 & EUR~227 & 15\,Hz & $\sim$0.225\textdegree & 12\,m / -- & 360\textdegree & 190\,g & UART 256\,kbps; triangulation \\
+\bottomrule
+\end{tabularx}
+\end{small}
+
+All seven from RobotShop EU, with a ROS~2 driver; accuracy $\pm$2--3\,cm for the ToF units, 1--2.5\% of range for the A2M12.
+
+\begin{tabularx}{\textwidth}{@{}L{3cm} L{3cm} Y@{}}
+\toprule
+\hd{Scan rate} & \hd{At 5\,m/s} & \hd{At 8\,m/s} \\
+\midrule
+10\,Hz & 50\,cm & 80\,cm \\
+20\,Hz & 25\,cm & 40\,cm \\
+30\,Hz & 17\,cm & 27\,cm \\
+40\,Hz & 12.5\,cm & 20\,cm \\
+\bottomrule
+\end{tabularx}
+
+\begin{itemize}
+  \item \textbf{SL450:} the only one at 40\,Hz (rates 15, 20, 25, 30, 40\,Hz), and 0.2\textdegree\ even at 40\,Hz thanks to its 72\,kHz sample rate; multi-echo noise filtering. Against: 320\,g, twice the Lakibeams, and new (March 2025), so less community troubleshooting than Slamtec.
+  \item \textbf{Lakibeam 1, the fallback:} 30\,Hz at 0.25\textdegree\ for EUR~439, 160\,g, runs straight from a 3S LiPo; Richbeam's ROS~2 driver publishes \code{/scan}. The 1L only adds range we do not need.
+  \item \textbf{Rejected for speed:} Lakibeam 1S (0.5\textdegree\ at 20\,Hz), RPLIDAR S3 (capped at 20\,Hz), LSLIDAR N301 (twice the price, the heaviest, 20\,Hz), RPLIDAR A2M12 (15\,Hz, 12\,m, slow UART).
+  \item \textbf{Field of view:} 360\textdegree\ gives nothing on an F1TENTH car: the chassis and electronics block the rear, so 270\textdegree\ is the norm.
+\end{itemize}
+
+\subsection{Camera (study of 7 Oct 2026)}\label{sec:camera}
+\begin{takeaway}
+\textbf{Pick: Orbbec Gemini 335L} (C-013), EUR~420 from OpenElab, DigiKey Italy at EUR~408 as a second source. The Intel RealSense D435i stays in the BOM as an unselected alternative.
+\end{takeaway}
+
+The LiDAR cannot see the tape, so a camera finds the lines (RASD FR-LIN). What that asks of the camera, most important first:
+
+\begin{tabularx}{\textwidth}{@{}L{4.6cm} Y@{}}
+\toprule
+\hd{Need} & \hd{Why} \\
+\midrule
+\endhead
+Global-shutter colour & At 5--8\,m/s a rolling shutter skews and smears the lines, worst in corners. The tape colour is not decided, so colour matters. \\
+Wide field of view, $\geq$ 60\,fps & Both lines stay in view near the car and through corners. At 8\,m/s, 30\,fps is 27\,cm per frame. \\
+Accurate pixel-to-floor projection & Good factory intrinsics, and the camera's pitch and roll to the floor at every frame: braking and accelerating pitch the car, so a fixed mount calibration is not enough at speed. \\
+Depth aligned to colour, and an IMU & To measure that pitch and roll each frame: fit the floor plane in the depth image, or use the IMU. \\
+Hardware timestamps & 10\,ms of timestamp error at 8\,m/s is 8\,cm (NFR-PER-004). \\
+USB~3, light & The Orin Nano's only Ethernet port goes to the LiDAR; a 1/10 car. \\
+\bottomrule
+\end{tabularx}
+
+\begin{tabularx}{\textwidth}{@{}L{0.4cm} L{3.4cm} L{2.4cm} Y@{}}
+\toprule
+\hd{\#} & \hd{Camera} & \hd{Price} & \hd{Notes} \\
+\midrule
+\endhead
+1 & Orbbec Gemini 335L / 336L & EUR~420 (335L) & Global-shutter colour 1280\x800 up to 60\,fps, 94\textdegree\x68\textdegree; depth aligned to colour in the camera; IMU up to 1\,kHz; depth from 0.17\,m, 95\,mm baseline; 133\,g, IP65. The 336L adds an IR-pass filter on the depth cameras. \\
+2 & RealSense D436 & EUR~576 & The same capabilities (1280\x800 at 60, 90\textdegree\x65\textdegree, aligned depth, IMU) in the D435i's body, same driver and topics. \\
+3 & Arducam B0385 (OV9782) plus an IMU board & EUR~69 + $\sim$EUR~25 & Global-shutter colour only: no depth, no factory calibration, no hardware IMU sync. USB~2, so 100\,fps only as MJPEG. \\
+4 & Luxonis OAK-D W & $\approx$EUR~522 & Global-shutter colour, 127\textdegree, can run a segmentation network on the camera. Strong fisheye distortion, weaker depth, rare in F1TENTH. \\
+5 & RealSense D435i & EUR~405 & Rolling-shutter colour, 1080p at 30\,fps, 69\textdegree\x42\textdegree. Usable only if the tape shows on its global-shutter IR cameras. \\
+\bottomrule
+\end{tabularx}
+
+\begin{itemize}
+  \item \textbf{Skipped:} Gemini 335/336 (short baseline), OAK-D Lite, OAK-D S2 (rolling-shutter colour); ZED Mini and ZED 2i (rolling shutter, depth on the Orin's GPU; the global-shutter ZED X needs a GMSL2 card); RealSense D455 (bigger, from EUR~536, minimum depth 0.4--0.5\,m misses the floor in front of the car).
+  \item \textbf{Colour-camera offset:} the colour camera sits beside the left IR camera, the depth origin: 23.75\,mm along $x$ on the 335L; the IMU is at (7.866, 1.068, $-$14.248)\,mm. Both are factory transforms and the floor calibration absorbs them. Mount the colour lens on the car's centreline.
+  \item \textbf{Projection:} fit a floor plane to the depth image rather than read depth at each tape pixel; stereo depth on a floor seen at a shallow angle is noisy.
+  \item \textbf{335L over 336L:} the 336L's IR-pass filter darkens the IR images under LED room light with the projector off, so the 335L is safer if those images are ever used alone.
+\end{itemize}
+
+\subsection{Chassis (study of 24 Sep 2026)}\label{sec:chassis}
+\begin{takeaway}
+\textbf{Pick: Traxxas Ford Fiesta ST Rally VXL, 74276-4} (C-010), bought complete (Plan A). It looks end of life [VERIFY]: Traxxas shows no price and UK retailers list it as discontinued. Plan B, if no complete car can be found, is a rolling chassis from Traxxas spare parts.
+\end{takeaway}
+
+The F1TENTH (RoboRacer) build guide is written for the Traxxas Slash 4x4 Premium (brushed Titan motor, XL-5 ESC). Applied to the Rally VXL's parts list (REV.\ 260209):
+
+\begin{tabularx}{\textwidth}{@{}L{4.6cm} Y@{}}
+\toprule
+\hd{Guide step (Slash 4x4)} & \hd{On the Rally VXL} \\
+\midrule
+\endhead
+Remove the body clips and body & Clipless body (7420, 7414): body and trim discarded. \\
+Remove the XL-5 ESC & Remove the VXL-3s ESC (3355R); the VESC 6 MkVI replaces it. \\
+Remove the receiver box, receiver, antenna tube & 7424, TQi receiver 6533, 1726 and 1926 discarded: the joystick and the Jetson replace the radio. \\
+Replace the brushed motor & Not needed: the Velineon 3500 brushless (3351R) is kept; the BOM's 4\,mm-to-3.5\,mm bullet adapters connect it to the VESC. \\
+Keep the servo & The 2075 servo is kept; the VESC drives it through the PPM cable. \\
+Remove the battery hold-down & 7426 discarded; the battery sits under the platform deck. \\
+Remove the nerf bars, reuse their M3 screws & No nerf bars on the Rally [VERIFY]; take M3 screws from the BOM's kit. \\
+Three 45\,mm M3 standoffs into the chassis & Chassis 7422 (``Slash LCG and Rally''): check the hole pattern on the real part [VERIFY]. \\
+Battery to VESC through TRX to XT90 & Not in the BOM \tbd[T-11]. \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Kept} (the rolling chassis, motor and servo): chassis tub, bulkheads, tie bars, skidplate, gear cover; the 4WD driveline (sealed front and rear diffs, centre slipper clutch, centre driveshaft, half-shafts, spur and pinion, motor mount and plate); the suspension (arms, pins, caster and steering blocks, stub-axle carriers, shock towers, camber and toe links, Ultra Shocks); the steering (bellcranks, servo saver, drag link, toe links, 2075 servo); wheels, tyres, hubs, bearings; the Velineon 3500.
+
+\textbf{Discarded:} body and accessories (7427-x, 7420, 7414, 7410, 7413X, 7419); receiver box, seals and plug (7424, 7425, 3698); battery hold-down (7426); antenna tube (1726, 1926); VXL-3s ESC, BEC and fan (3355R, 2260, 3340); TQi radio and telemetry (6509R, 6528, 6533); the box's batteries and tools.
+
+\subsubsection{Plan B parts}
+Universal Traxxas part numbers, sold in EU shops under the same number (prefix TRX or TXX). [VERIFY] marks a variant or colour not confirmed as stock; check them, and every quantity, against the exploded views of the 74276-4.
+
+\begin{small}
+\begin{tabularx}{\textwidth}{@{}L{0.6cm} L{1.5cm} Y L{4.4cm}@{}}
+\toprule
+\hd{Qty} & \hd{Part} & \hd{Description} & \hd{Notes} \\
+\midrule
+\endhead
+\multicolumn{4}{@{}l}{\textit{Chassis and structure}} \\
+1 & 7422 & Chassis, Slash LCG / Rally & platform-deck standoffs go here [VERIFY] \\
+1 & 7430X & Bulkhead, front & \\
+1 & 7429 & Bulkhead, rear & \\
+1 & 6823 & Bulkhead tie bars, front and rear, aluminium & colour [VERIFY] \\
+1 & 7435 & Front skidplate, angled & \\
+1 & 7477 & Gear cover with wire retainer & guards the spur gear against cables \\
+1 & 7434 & Foam body bumper, low profile & recommended \\
+\multicolumn{4}{@{}l}{\textit{Driveline}} \\
+1 & 6788 & Front differential, complete (13/37, rally) & \\
+1 & 6789 & Rear differential, complete (13/37, rally) & \\
+1 & 6878 & Slipper clutch, complete & a centre slipper, not a centre diff \\
+1 & 6893R & Slipper input shaft, bearing adapter, pin & may come with 6878 [VERIFY] \\
+1 & 6888 & Centre rear drive hub & \\
+1 & 6888X & Front drive hub, hardened steel & \\
+1 & 7455 & Centre driveshaft, plastic & [VERIFY]; 6855 aluminium is the upgrade \\
+2 & 7450 & Front half-shaft, Extreme HD, 6\,mm axle & sold as left or right \\
+2 & 7451 & Rear half-shaft, Extreme HD, 6\,mm axle & sold as left or right \\
+1 & 6842 & Spur gear, 0.8 metric pitch & stock tooth count \tbd{} (50, 52 or 54T) \\
+1 & -- & Pinion, 32-pitch steel, 3\,mm bore & stock tooth count \tbd; the smaller stock pinion suits indoor speeds \\
+1 & 7460A & Motor mount, 3x6 flat-head screw, nylock nut & \\
+1 & 7490 & Motor plate & colour [VERIFY] \\
+\multicolumn{4}{@{}l}{\textit{Suspension}} \\
+2 & 6731 & Suspension arms, front/rear L\&R (2 per pack) & 4 arms in total \\
+1 & 9042 & Suspension pin set, Extreme HD & 9042X is the hardened upgrade \\
+1 & 9032 & Caster blocks, Extreme HD & colour [VERIFY] \\
+1 & 9037 & Steering blocks, Extreme HD, L\&R & colour [VERIFY] \\
+1 & 9050 & Rear stub-axle carriers, Extreme HD & colour [VERIFY] \\
+1 & 9038 & Front shock tower, Extreme HD & \\
+1 & 9039 & Rear shock tower, Extreme HD & \\
+1 & 7432 & Camber links, 49\,mm (72\,mm c-c) & front/rear [VERIFY] \\
+1 & 7431 & Camber links, 49\,mm (63\,mm c-c) & front/rear [VERIFY] \\
+1 & 7433 & Toe links, 47\,mm (77\,mm c-c), rear & [VERIFY] \\
+1 & 3760A & Ultra Shocks, long, with springs (front pair) & [VERIFY]; rebuild kit 2362 \\
+1 & 3762A & Ultra Shocks, XX-long, with springs (rear pair) & [VERIFY] \\
+1 & 5529 & Shim set, hollow balls & \\
+1 & 2742 & Rod ends, long, hollow balls & \\
+\multicolumn{4}{@{}l}{\textit{Steering}} \\
+1 & 2075 & Digital high-torque waterproof servo & kept by the build \\
+1 & 6845X & Bellcranks, servo saver, spring, retainer, horn & \\
+1 & 7438 & Drag link & 6845A aluminium is the upgrade \\
+1 & 7439 & Front toe links, composite, hollow balls & \\
+1 & 2545 & Bellcrank bushings, 5x8x2.5\,mm & \\
+\multicolumn{4}{@{}l}{\textit{Wheels and hubs}} \\
+2 & 7473 & Tyres and wheels, glued, gravel (2 per pack) & gravel grips poorly indoors; road tyres \tbd \\
+1 & 9069 & Wheel hubs, 12\,mm hex, Extreme HD & \\
+1 & 2754 & Stub-axle pins & \\
+1 & 3647 & Wheel nuts, 4\,mm flanged nylock & [VERIFY]; 1747 is the alternative \\
+1 & 5854 & Hub retainer, 17\,mm, M4 & used on this model [VERIFY] \\
+\multicolumn{4}{@{}l}{\textit{Motor}} \\
+1 & 3351R & Velineon 3500 brushless, 3.5\,mm bullets & kept; the 3350R combo is easier to find, then drop its ESC \\
+\bottomrule
+\end{tabularx}
+\end{small}
+
+\begin{itemize}
+  \item \textbf{Bearings} (blue rubber-sealed, 2 per pack), quantities \tbd{} from the exploded views: 5116 (5x11x4\,mm), 5117 (6x12x4), 5118 (8x16x5), 5119 (10x15x4), 5120 (12x18x4), 1985 PTFE washers (5x8x0.5).
+  \item \textbf{Screws and nuts} (hex drive, packs of 6), quantities \tbd: button-head 3x6 to 3x40 (2575--2580, 2582, 2583, 2591, 2592) and 4x10/12/14 (3936--3938); cap-head 2.5x6, 2.5x8, 3x8, 3x15 (3215, 3965, 1552, 2586); flat-head 3x6, 3x8, 3x15 (3932, 3931, 3646); countersunk 3x6, 3x12, 4x12, 4x15 (2534, 2552, 2542, 2546); nylock nuts 3 and 4\,mm (2745, 1747); grub screws (2743); washers 3x6 (2746); shock shoulder screws (3642X). One missing screw stops the build: this is Plan B's biggest risk.
+  \item \textbf{Tools:} spare parts come without the box's hex keys; add a hex driver set (Traxxas 2748R or 8712, or 1.5/2.0/2.5\,mm hex and 4/7\,mm nut drivers).
+  \item \textbf{Cost:} Plan B heads toward or above the price of the complete car before the motor, servo, diffs, shocks, bearings and screws are priced, and it adds a full assembly. Plan A stays the choice.
+\end{itemize}
 
 \end{document}

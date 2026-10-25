@@ -1,6 +1,6 @@
 % ============================================================================
 % RASD --- F1tenth PoliMI car
-% Source: docs/scope.md (working source until v1.00), docs/hardware/*, hardware/bom/master_bom.xlsx
+% Source: docs/scope.md at 425ee04 and docs/hardware/* (folded in, removed), hardware/bom/master_bom.xlsx
 % ============================================================================
 \documentclass[11pt,a4paper]{article}
 
@@ -34,7 +34,7 @@ The same stack runs on a simulator, so every function can be tried before the ca
 \subsection{Scope}
 \textbf{In scope:} the car's hardware as selected in the master BOM, the ROS~2 stack on the car and the stack's use of the simulator, the safety features, the documentation.
 
-\textbf{Out of scope here:} the simulator's internals (the gym, the bridge and our \code{polimi\_sim} extensions). They get their own RASD and TDD. This document only requires that the simulator stands in for the car (\cref{sec:fr-sim}).
+\textbf{Out of scope here:} the simulator's internals (the gym, the bridge and our \code{polimi\_sim} extensions). Their design is in \code{TDD\_Gym}. This document only requires that the simulator stands in for the car (\cref{sec:fr-sim}).
 
 \textbf{Reference, not required:} the summer school exercises (\cref{sec:exercises}).
 
@@ -68,7 +68,7 @@ Future teams & A platform to extend: clear interfaces, setup and design decision
 \subsubsection{Legend}
 \begin{itemize}
   \item \textbf{Phase:} \code{V1} base platform; \code{V2} advanced topic; \code{Ref} reference only (summer school exercises, \tbd[OI-12]).
-  \item \textbf{Src:} \code{S} \code{docs/scope.md}; \code{H} hardware comparisons in \code{docs/hardware/}; \code{B} master BOM; \code{D} a decided open item; \code{C} \code{docs/software/car.md}.
+  \item \textbf{Src:} \code{S} the project scope (\code{docs/scope.md} at \code{425ee04}, folded here); \code{H} the hardware studies (\code{TDD\_F1tenth}, Hardware Selection); \code{B} master BOM; \code{D} a decided open item; \code{C} the car bringup notes (folded into \code{TDD\_F1tenth}).
   \item \textbf{IDs:} \code{FR-<DOM>-nnn} functional, \code{NFR-<CAT>-nnn} non-functional, \code{C-nnn} constraint, \code{A-nnn} assumption.
 \end{itemize}
 
@@ -402,7 +402,7 @@ Summer school & \tbd & \tbd \\
 \hd{Risk} & \hd{Prob.} & \hd{Impact} & \hd{Mitigation} \\
 \midrule
 \endhead
-Chassis is end of life, low stock & Medium & High & Several retailers in the BOM; Plan B parts list in the sourcing study (H) \\
+Chassis is end of life, low stock & Medium & High & Several retailers in the BOM; Plan B parts list in \code{TDD\_F1tenth}, Hardware Selection (H) \\
 Glare or floor reflections hide the tape & Medium & High & Early phone video of the real tape; method choice OI-06; global-shutter camera \\
 Symmetric rectangular room confuses localization & Medium & Medium & Always give the initial pose (OI-07) \\
 People or moved furniture change the room after mapping & High & Medium & Re-map on site (A-001); option B corrects from the tape \\
@@ -415,26 +415,28 @@ A gain from option A too small to measure in a small room & Medium & Medium & De
 % ============================================================================
 \section{Open Items}
 % ============================================================================
-Decisions and checks the requirements leave open. \code{docs/scope.md} holds the options and suggestions until this document reaches v1.00.
+Decisions and checks the requirements leave open, folded from the scope with their options and suggested answers. Nothing is decided until the row says so. [DECIDE] is a choice for the team, [VERIFY] a fact to check.
 
-\begin{tabularx}{\textwidth}{@{}L{1.4cm} Y L{2.6cm}@{}}
+\begin{small}
+\begin{tabularx}{\textwidth}{@{}L{1.1cm} L{3.4cm} Y L{1.9cm}@{}}
 \toprule
-\hd{ID} & \hd{Item} & \hd{Affects} \\
+\hd{ID} & \hd{Item} & \hd{Options and suggestion} & \hd{Affects} \\
 \midrule
 \endhead
-OI-01 & Advanced topic: option A or B. Held until the base platform runs. & FR-ADV \\
-OI-02 & Frame of the line-detection path: car frame or \code{odom}. & FR-LIN-002 \\
-OI-03 & Where the path drawn in the map comes from (teach and repeat, then tape mapping). & FR-PTH-008 \\
-OI-04 & Open paths: stop at the end of the path. & FR-PTH-005 \\
-OI-05 & Form of the PID (lateral and heading error, look-ahead). & FR-PTH-001 \\
-OI-06 & Line detection method. & FR-LIN-001 \\
-OI-07 & Localization node (\code{nav2\_amcl}, \code{slam\_toolbox}, \code{particle\_filter}). & FR-LOC-001 \\
-OI-08 & EKF for \code{odom} in the base platform. & FR-LOC-003 \\
-OI-09 & Safety with \code{ackermann\_mux} locks [VERIFY]. & FR-SAF-002, 003 \\
-OI-11 & Off-track report (optional). & FR-OFF-001 \\
-OI-12 & Exercises in the simulator: reference or required. & \cref{sec:exercises} \\
+OI-01 & [DECIDE] Advanced topic: option A (racing line) or B (hybrid localization). \textbf{Held} until the base platform runs (21 Oct 2026). & Both need the tape lines in map coordinates (OI-03). A also needs the vehicle parameters (friction, CoG height), the TUM optimizer, a controller that holds at speed and a localization that keeps up; easy to prove (lap times, line crossings), but the gain is small in a small room. B needs an EKF, a camera correction that observes only the lateral offset and heading to the tape, and handling of sensor failures; harder to prove on the car (needs a ground truth) and overlaps exercise 5. & FR-ADV \\
+OI-02 & [DECIDE] Frame of the line-detection path: \code{base\_link} or \code{odom}. & Suggested: \code{odom}, transformed at the image time stamp. It compensates the camera latency, keeps a fragment valid between frames, and turns the stale-path rule into ``keep going on the last path for a short distance, then stop''. Alternative: \code{base\_link}, with the PID looking up the transform at the image time. The path-following contract (any frame) does not change. & FR-LIN-002 \\
+OI-03 & [DECIDE] Where the path drawn in the map comes from. The tape is not in the LiDAR map, so the path cannot be drawn by hand inside it. & Suggested for the base platform: teach and repeat: drive the camera follower (1b) slowly with AMCL running, record the poses in the map, smooth them, save them as the path. Later, for A or B: tape mapping, projecting the detected tape into the map to build the two boundary lines. & FR-PTH-008 \\
+OI-04 & [DECIDE] Open paths. Exercise 1a starts from a straight line, but offline paths are published as closed loops. & Add an open-path mode: the PID stops the car at the end of the path. & FR-PTH-005 \\
+OI-05 & [DECIDE] Form of the PID. A PID on the lateral error alone oscillates as speed rises. & Lateral and heading error with a look-ahead point (Stanley-like); Pure Pursuit as the drop-in for higher speed. & FR-PTH-001 \\
+OI-06 & [DECIDE] Line detection method. & (a) Image space: colour threshold, bird's-eye view, sliding windows, polynomial fit (the classic exercise 2). (b) Floor points: segment the tape, project the pixels onto the floor, fit and track the lines in \code{odom} (also feeds tape mapping, OI-03). (c) A learned segmentation, only if thresholds fail on the real floor. Hard cases for all: hairpins with three or four lines in view, one line in view, glare. First data: phone video of the real tape. & FR-LIN-001 \\
+OI-07 & [DECIDE] Localization node. & \code{nav2\_amcl} (named by the scope; in the image with DEC-02 of the TDD), \code{slam\_toolbox} in localization mode, or MIT \code{particle\_filter} if AMCL is too slow at speed. Risks: a symmetric rectangular room (always give the initial pose), people around the track, furniture moved after mapping. & FR-LOC-001 \\
+OI-08 & [DECIDE] EKF for \code{odom} (wheel odometry and the camera IMU, \code{robot\_localization}) in the base platform. & Suggested: yes. It helps exercise 1a and both options, and is the first half of exercise 5. & FR-LOC-003 \\
+OI-09 & [VERIFY] Safety with \code{ackermann\_mux} locks. & Emergency stop: a latched lock above the joystick. Autonomy deadman: a lock with a timeout between \code{/drive} and the joystick, released while RB is held (today RB's \code{autonomous\_control} publishes to \code{/dev/null}, so the autonomy is not gated). AEB: an input between \code{/drive} and the joystick that brakes under a time-to-collision threshold, so a person can still drive the car away. Check how locks behave in this mux. & FR-SAF-002, 003 \\
+OI-11 & [DECIDE] Off-track report from the stack's own estimate (optional). On the car, leaving the lines is judged by the people watching; there is no external tracking. & A node that compares the car's footprint at the stack's pose (map or odom) with the tape lines (tape map or detected lines) and reports when it believes the car is off the track. It only reports, never stops the car, and shows what the stack believes, not the truth. & FR-OFF-001 \\
+OI-12 & [DECIDE] Exercises in the simulator: reference or required. & Suggested (user, 21 Oct 2026): reference only, not required in the simulator or the base platform; the simulator covers what the base platform's acceptance needs. Optional simulator additions for the exercises are in simulation plan 01.5 (O-25). & \cref{sec:exercises} \\
 \bottomrule
 \end{tabularx}
+\end{small}
 
 Decided: OI-10 (one image rebuild with \code{nav2\_amcl}, \code{robot\_localization}, \code{image\_transport\_plugins}, \code{cv\_bridge}; 22 Oct 2026) and OI-13 (Jazzy, C-020; 21 Oct 2026).
 
@@ -455,12 +457,9 @@ Decided: OI-10 (one image rebuild with \code{nav2\_amcl}, \code{robot\_localizat
 
 \subsection{References}
 \begin{enumerate}
-  \item \code{docs/scope.md}, Project scope, 21 Oct 2026.
-  \item \code{docs/hardware/LiDAR\_comparison\_F1TENTH.md}, 23 Sep 2026.
-  \item \code{docs/hardware/Camera\_comparison\_F1TENTH.md}, 7 Oct 2026.
-  \item \code{docs/hardware/Fiesta\_ST\_Rally\_VXL\_sourcing\_F1TENTH.md}, 24 Sep 2026.
+  \item Project scope, 21 Oct 2026: \code{docs/scope.md} at commit \code{425ee04}, folded into this document and removed.
+  \item Hardware studies (LiDAR 23 Sep, chassis 24 Sep, camera 7 Oct 2026): folded into \code{TDD\_F1tenth}, Hardware Selection.
   \item \code{hardware/bom/master\_bom.xlsx}, updated 7 Oct 2026.
-  \item \code{docs/software/car.md}, car bringup.
   \item \code{TDD\_F1tenth}, the design that refines these requirements.
 \end{enumerate}
 
