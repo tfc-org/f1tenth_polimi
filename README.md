@@ -64,7 +64,7 @@ Once the image is built, `bash scripts/sim/start.real.sh` does the last four lin
 - `setup_git.sh` fetches the submodules and sets `push.recurseSubmodules=check`, `submodule.recurse=true` and an `upstream` remote in the fork. Safe to re-run.
 - `HOST_UID` / `HOST_GID` (from `id -u`, `id -g`) make the container user match yours, so files created in the bind-mounted folders stay yours on the host.
 - Pick the service for your machine: `arm` Apple Silicon, `x86` PC, `jet` Orin Nano on the car. The first build takes a while (gym and gym_ros).
-- Code, configs and maps are bind-mounted, so most changes need only `cb`. Rebuild the image only when the `Dockerfile`, a `package.xml` (rosdep runs at build time) or `GYM_REF` / `GYM_ROS_REF` changes. Bump the pins on purpose, never follow the branch.
+- Code, configs and maps are bind-mounted, so most changes need only `cb`; when to rebuild the image is in [Docker](docs/software/docker.md#rebuild).
 
 Then open Foxglove at `ws://localhost:8765` to see the track, the car and the scan. The car stands still until it gets a command: [Simulator](docs/software/simulator.md) shows how to drive it.
 

@@ -71,6 +71,8 @@ What to do after a change, from cheapest to most expensive:
 | `docker-compose.yaml` | `docker compose up -d arm` (recreates, no rebuild) |
 | a `package.xml` dependency, `Dockerfile`, `GYM_REF` / `GYM_ROS_REF` | rebuild (below) |
 
+A `package.xml` needs a rebuild because rosdep runs at build time. Bump `GYM_REF` / `GYM_ROS_REF` on purpose, never follow the branch.
+
 A rebuild reuses the cache up to the first changed step. If it downloads everything again, the cache was pruned (`docker builder prune`, or Docker Desktop's automatic cleanup) or the image predates a Dockerfile change: one slow build, then it's fast again.
 
 ```bash
