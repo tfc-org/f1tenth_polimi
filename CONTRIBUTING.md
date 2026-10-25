@@ -2,6 +2,20 @@
 
 Every change reaches a shared branch through a pull request with one approval. This page covers the fork and submodule workflow, then who can review and merge.
 
+## Documents (LaTeX)
+
+Requirements and design are LaTeX documents in `docs/software/Source_Documentation/`, built into `docs/software/PDF_Documentation/`. The PDFs are committed, so reading them needs nothing extra.
+
+To edit them you need the private `tfc-org/Latex_Templates` submodule (tfc-org members can read it). Clones skip it (`update = none` in `.gitmodules`) and `setup_git.sh` marks it inactive, so `git pull` works without access. Fetch it once:
+
+```bash
+git config submodule.docs/Latex_Templates.active true
+git submodule update --init --checkout docs/Latex_Templates
+cd docs && make status          # make build <Doc> to rebuild a PDF
+```
+
+Building needs `pdflatex`, `latexdiff` and the Source Serif/Sans/Code Pro fonts on the host.
+
 ## Git and submodules
 
 The car's drivers live in a separate repository that we forked, linked here as a submodule. That keeps upstream's history intact and lets us pull their fixes, at the price of one extra commit whenever we change the fork.

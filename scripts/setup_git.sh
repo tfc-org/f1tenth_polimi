@@ -21,6 +21,15 @@ git config push.recurseSubmodules check
 echo "==> Making pull/switch also update submodules"
 git config submodule.recurse true
 
+echo "==> Leaving the private docs/Latex_Templates out of pull/switch (see CONTRIBUTING.md)"
+if ! git config submodule.docs/Latex_Templates.active >/dev/null; then
+    if [ -e docs/Latex_Templates/.git ]; then
+        git config submodule.docs/Latex_Templates.active true
+    else
+        git config submodule.docs/Latex_Templates.active false
+    fi
+fi
+
 for entry in "${FORKS[@]}"; do
     read -r path url <<< "$entry"
     echo "==> $path"

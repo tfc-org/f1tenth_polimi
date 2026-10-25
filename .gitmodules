@@ -5,3 +5,4 @@
 [submodule "docs/Latex_Templates"]
 	path = docs/Latex_Templates
 	url = https://github.com/tfc-org/Latex_Templates.git
+	update = none
