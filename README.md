@@ -61,7 +61,7 @@ simcar                            # simulator as the car: map spielberg, laser s
 
 Once the image is built, `bash scripts/sim/start.real.sh` does the last four lines in one go.
 
-- `setup_git.sh` fetches the submodules and sets `push.recurseSubmodules=check`, `submodule.recurse=true` and an `upstream` remote in the fork. Safe to re-run.
+- `setup_git.sh` fetches the submodules, except the private `Latex_Templates` (see [Contributing](CONTRIBUTING.md)), and sets `push.recurseSubmodules=check`, `submodule.recurse=true` and an `upstream` remote in the fork. Safe to re-run.
 - `HOST_UID` / `HOST_GID` (from `id -u`, `id -g`) make the container user match yours, so files created in the bind-mounted folders stay yours on the host.
 - Pick the service for your machine: `arm` Apple Silicon, `x86` PC, `jet` Orin Nano on the car. The first build takes a while (gym and gym_ros).
 - Code, configs and maps are bind-mounted, so most changes need only `cb`; when to rebuild the image is in [Docker](docs/software/docker.md#rebuild).

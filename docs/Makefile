@@ -1,3 +1,6 @@
+ifeq ($(wildcard Latex_Templates/core/build/docbuild.mk),)
+$(error Latex_Templates not checked out: see CONTRIBUTING.md, Documents (LaTeX))
+endif
 include Latex_Templates/core/build/docbuild.mk
 
 # Settings (Latex_Templates/core/build/README.md), paths relative to this Makefile; commented lines show defaults:
