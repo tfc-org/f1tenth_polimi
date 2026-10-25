@@ -14,20 +14,9 @@ Pick the service for your machine. `arm` is used in the examples; replace it wit
 | `novnc` | Optional browser display for RViz (profile `gui`) | – | port `8080` |
 
 - One image per target, built from `docker/ros/Dockerfile` on `ros:humble`.
-- Bind mounts: `ros2_ws/src`, `ros2_ws/config`, `ros2_ws/maps`, `docker/ros/bashrc_polimi` (read-only, over the copy baked into the image), and `docker/ros/python3-ros` (read-only, see [Python and IDE](python.md)).
+- Bind mounts: `ros2_ws/src`, `ros2_ws/config`, `ros2_ws/maps`, `docker/ros/bashrc_polimi` (read-only, over the copy baked into the image), and `docker/ros/python3-ros` (read-only, see [PyCharm interpreter](#pycharm-interpreter)).
 - `build/`, `install/`, `log/` live in Docker volumes (`build_arm`, …), not in the repo: build output stays out of git and is kept between container restarts.
 - Ports bind to `127.0.0.1` only.
-
-## Docker Desktop from the command line (macOS)
-
-```bash
-docker desktop start              # or: open -a Docker
-docker desktop status
-docker desktop restart
-docker desktop stop
-```
-
-No Docker Desktop settings are needed for this repo.
 
 ## Everyday commands
 
@@ -82,6 +71,8 @@ What to do after a change, from cheapest to most expensive:
 | `docker-compose.yaml` | `docker compose up -d arm` (recreates, no rebuild) |
 | a `package.xml` dependency, `Dockerfile`, `GYM_REF` / `GYM_ROS_REF` | rebuild (below) |
 
+A `package.xml` needs a rebuild because rosdep runs at build time. Bump `GYM_REF` / `GYM_ROS_REF` on purpose, never follow the branch.
+
 A rebuild reuses the cache up to the first changed step. If it downloads everything again, the cache was pruned (`docker builder prune`, or Docker Desktop's automatic cleanup) or the image predates a Dockerfile change: one slow build, then it's fast again.
 
 ```bash
@@ -89,6 +80,37 @@ docker compose build arm                   # after package.xml / Dockerfile / GY
 docker compose build --no-cache arm        # from scratch
 docker compose up -d --force-recreate arm  # use the new image
 ```
+
+## Car bringup (`jet`)
+
+The car is not built yet, so this has not run on hardware. It starts the drivers: VESC, joystick teleop, the command mux and the static transform to the LiDAR.
+
+```bash
+docker compose build jet
+docker compose up -d jet
+docker compose exec jet bash
+ros2 launch f1tenth_stack no_lidar_bringup_launch.py
+```
+
+The VESC packages build with the rest of the workspace: `cb`. What is still missing before the first run is in the TDD's open items (`docs/software/PDF_Documentation/car/`).
+
+## PyCharm interpreter
+
+All Python runs in the container: `rclpy` and the ROS packages have no host install. There is no host virtual environment.
+
+`docker/ros/python3-ros` is mounted at `/opt/ros-python/bin/python`. It sources ROS and the workspace overlay, then runs `/usr/bin/python3`, so the IDE resolves `rclpy`, messages and the colcon packages.
+
+1. `docker compose up -d arm` and `cb` once, so the workspace overlay exists.
+2. Settings > Python > Interpreter > Add Interpreter > On Docker Compose, service `arm`.
+3. As interpreter path enter `/opt/ros-python`. PyCharm appends `/bin/python` itself.
+4. Mark each package folder in `ros2_ws/src` as Sources Root.
+
+Afterwards:
+
+- New packages or messages: run `cb`, then reload the interpreter paths.
+- Run configurations: set Docker Compose "Command and options" to `exec` to reuse the running container.
+- PyCharm leaves stopped `f1tenth_polimi-arm-run-*` containers behind. Remove them with `docker compose down --remove-orphans`, then `docker compose up -d arm`.
+- `No such file or directory` on the interpreter: the bind mount is stale, see the Rebuild table above.
 
 ## Optional noVNC (RViz)
 

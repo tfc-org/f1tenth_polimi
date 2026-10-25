@@ -1,6 +1,6 @@
 # Simulator scripts
 
-Shortcuts to run the simulator from the host, without typing the `docker compose exec …` lines. They work from any directory and start the container if it is not running. What the simulator does and how to tune it is in [docs/software/simulator.md](../../docs/software/simulator.md).
+Shortcuts to run the simulator from the host, without typing the `docker compose exec …` lines. They work from any directory and start the container if it is not running. How to run and tune it is in [docs/software/simulator.md](../../docs/software/simulator.md); how it works is in [TDD_Gym](../../docs/software/PDF_Documentation/sim/.TDD_Gym.latest.pdf).
 
 | Script | Does |
 |---|---|

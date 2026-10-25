@@ -1,8 +1,6 @@
 # Simulator
 
-f1tenth_gym + f1tenth_gym_ros for the physics, plus our `polimi_sim` package, in the `arm` / `x86` containers.
-
-The gym alone is too kind: a perfect scan 250 times a second, commands that act instantly, a pose that is always exact. Code tuned on that breaks on the real car. `polimi_sim` puts model nodes between the gym and the stack, so the stack runs against the car's topics, frames, rates and imperfections. The gym stays the source of physics and ground truth.
+How to run the simulator: f1tenth_gym + f1tenth_gym_ros for the physics, plus our `polimi_sim` model nodes, in the `arm` / `x86` containers. How it is built (graph, models and their parameters, sim vs car, ideal mode, known limits) is in `TDD_Gym` (`docs/software/PDF_Documentation/sim/`).
 
 ## Run
 
@@ -34,7 +32,7 @@ docker compose exec arm bash -c "source /etc/bashrc_polimi && simcar levine idea
 
 ## Configs
 
-Each thing is defined once, in its own file under `ros2_ws/config/` (bind-mounted: no rebuild). They are chosen independently.
+Under `ros2_ws/config/`, bind-mounted: no rebuild. They are chosen independently and merged at launch (see `TDD_Gym`).
 
 | File | Holds | Chosen with |
 |---|---|---|
@@ -46,100 +44,19 @@ Each thing is defined once, in its own file under `ros2_ws/config/` (bind-mounte
 - Maps: `spielberg` (default; Red Bull Ring, a closed track about 2.2 m wide), `levine` (a corridor loop, start at (-12, 0)).
 - New map: a file with those four keys. `map_path` is absolute or relative to f1tenth_gym_ros's share directory (bundled: `maps/levine`, `maps/levine_obs`, `maps/levine_blocked`, `maps/blank`, `maps/Spielberg`). Any other `gym_bridge` parameter put there overrides `sim/gym.yaml`.
 - New laser: copy `lidar/sl450.yaml`, then `simcar spielberg lidar:=<name>`.
-- At launch the four files are merged into the config the gym gets, written to `/tmp/polimi_sim/gym_<map>_<lidar>.yaml`. The gym's own LiDAR takes its beam count, angles, ranges and mount from the lidar and mount files, so the laser is not described twice.
-- The gym's LiDAR stays enabled, without noise, on `/sim/scan_unused`: its wall collision check runs on that scan. The stack's `/scan` comes from `lidar_model`.
 - `sim/gym.yaml` is f1tenth_gym_ros's `config/sim.yaml` at the pinned commit, minus the keys above. Re-copy it when `GYM_ROS_REF` in the Dockerfile is bumped; its header lists what differs.
-- Controllers must take beam angles from each `LaserScan` message (`angle_min + i * angle_increment`), never from hard-coded indices, so the same code runs with any laser and on the car.
 
-## Graph
+## Parameters
 
-The gym computes where the car really is. Three model nodes turn that into what the car's sensors would report and what its actuators would do; the mux is the car's own.
+Defaults and what each one means are in `TDD_Gym`. `actuation_model`, `odom_model` and `teleop_bridge` defaults are in `ros2_ws/src/polimi_sim/config/`; the laser's are in `ros2_ws/config/lidar/`. Edits apply on the next launch. Override a whole file with a launch argument:
 
+```bash
+docker compose exec arm bash -c "source /etc/bashrc_polimi && simcar levine odom_params:=/path/my_odom.yaml"
 ```
-gym_bridge ──truth pose (250 Hz)──► lidar_model ──► /scan        (frame laser, 40 Hz)
-     │                        └──► odom_model  ──► /odom + TF odom→base_link (50 Hz)
-     ▲ /sim/drive (100 Hz)
-actuation_model ◄── /ackermann_cmd ◄── ackermann_mux ◄── /drive   (autonomy, priority 10)
-                                                     ◄── /teleop  (teleop_bridge ◄── /cmd_vel, priority 100)
-static TF base_link→laser  (ros2_ws/config/car/laser_mount.yaml)
-truth, for evaluation only: map → ego_racecar/base_link, /ego_racecar/odom
-```
-
-Reading it bottom-up: the stack publishes `/drive`, the mux lets teleop override it, `actuation_model` delays and limits the command like the VESC and servo would, and the gym moves the car. From the new true pose, `lidar_model` produces `/scan` and `odom_model` produces `/odom`.
-
-The stack may use only `/scan`, `/odom`, TF `odom → base_link → laser`, and publish `/drive`. It must never read `ego_racecar/*` or `/ego_racecar/odom`: those are the ground truth, which the car does not have. They are for measuring how well the stack does.
-
-## Sim vs car
-
-What each model changes compared with the gym alone, and what it stands for on the car:
-
-| | Gym alone | `simcar` | Car |
-|---|---|---|---|
-| `/scan` | 250 Hz, all beams at one instant, frame `ego_racecar/laser` | 40 Hz, rotating-sensor timing and motion distortion, frame `laser` | SL450 driver |
-| Scan errors | Gaussian noise | noise, dropouts, grazing loss, 15 m low-reflectivity limit, mixed pixels | real |
-| Command path | `/drive` straight into physics, held forever | `/drive` → `ackermann_mux` (car's `mux.yaml`) → `actuation_model` | mux → VESC |
-| Actuation | ideal | command delay, VESC timeout, servo delay and rate, accel / brake limits | VESC + servo |
-| Odometry | ground truth in `map` | `/odom`: speed with scale error and noise, yaw rate from the commanded steering; drifts | `vesc_to_odom` |
-| Frames | `map → ego_racecar/base_link → ego_racecar/laser` | `odom → base_link → laser`, truth tree kept apart | `odom → base_link → laser` |
-| Teleop | `/cmd_vel` straight into physics | `/cmd_vel` → `teleop_bridge` → `/teleop` → mux | joystick → `/teleop` → mux |
-
-## Nodes and parameters
-
-The values are first guesses from datasheets and upstream defaults. Those marked **[MEASURE]** get replaced with measurements once the car exists, **[VERIFY]** ones need checking against the real driver or firmware.
-
-`actuation_model`, `odom_model` and `teleop_bridge` defaults are in `ros2_ws/src/polimi_sim/config/`; the laser's are in `ros2_ws/config/lidar/`. Edits apply on the next launch. Override a whole file with a launch argument, e.g. `simcar levine odom_params:=/path/my_odom.yaml`.
-
-### `lidar_model` (`ros2_ws/config/lidar/sl450.yaml`)
-
-A real LiDAR spins: each beam is measured at a slightly different time, so while the car moves the scan is skewed, and some beams come back wrong or not at all. This node reproduces that. It ray-casts the gym's map with the gym's own caster, from the truth pose composed with the mount.
-
-- Timing: `rate_hz` 40 (SL450: 15 / 20 / 25 / 30 / 40), `fov_deg` 270, `resolution_deg` 0.2 → 1351 beams, `time_increment = 1 / (rate · 1800)`, `scan_time = 1 / rate`. The sweep lasts 18.75 ms at 40 Hz.
-- Motion distortion: the beams are cast in `blocks` (8) groups, each from the truth pose at that group's time. `blocks: 1` = no distortion.
-- `stamp_at` (`start` | `end` of the sweep), `publish_delay` (0.002 s), `no_return_value` (`'inf'`, REP 117). **[VERIFY]** all three against the SL450 driver.
-- Effects, each off at `0.0`: `noise_std` (0.01 m), `dropout_prob` (0.002), `grazing_dropout_prob` (0.5, beyond `grazing_max_deg` 80), `reflectivity_range_max` (15 m), `mixed_pixel_prob` (0.3, at jumps over `mixed_pixel_jump` 0.3 m).
-- `seed` (0 = different every run).
-- Cost: 0.1 ms per scan on the Mac (budget 5 ms).
-
-### `actuation_model` (`actuation_model.yaml`)
-
-A command does not act at once: it travels to the VESC, the servo needs time to turn, the motor cannot change speed instantly, and the VESC stops the motor when commands stop coming. This node sits where the VESC would: `/ackermann_cmd` → `/sim/drive` on a 100 Hz timer. It also publishes the steering "as sent to the VESC" on `/sim/steering_command` (`std_msgs/Float64`, rad).
-
-- `command_delay` 0.02 s, `vesc_timeout` 0.5 s (no command for longer → speed 0; the steering stays), `steer_offset` 0.0 rad, `servo_delay` 0.03 s, `servo_rate` 3.2 rad/s, `max_steer` 0.4189 rad, `accel_max` 4.0 m/s², `brake_max` 6.0 m/s². **[MEASURE]** all of them on the car; `vesc_timeout` **[VERIFY]** in the VESC app config.
-- The gym still applies its own limits afterwards (steering 3.2 rad/s, acceleration 9.51 m/s²).
-
-### `odom_model` (`odom_model.yaml`)
-
-The car has no GPS: it estimates its motion from the motor speed and the steering it commanded, and that estimate drifts. This node mirrors the car's `vesc_to_odom`: `/odom` (frame `odom`, child `base_link`) and TF `odom → base_link` at 50 Hz, starting from 0.
-
-- Speed = true longitudinal speed × (1 + `speed_scale_error` 0.02) + noise `speed_noise_std` 0.02 m/s, zeroed below `speed_deadband` 0.05 m/s.
-- Yaw rate = `v · tan(δ) / wheelbase`, with δ the **commanded** steering. `wheelbase` 0.3302 (gym). **[MEASURE]**: the car's `vesc.yaml` has 0.25.
-- The yaw rate reads high in corners (9% at 1.5 m/s, steering 0.25 rad): the gym's tyres slip, the formula assumes they don't. `vesc_to_odom` on the car has the same error.
-- `debug_map_to_odom` (`off`): publishes `map → odom`, which normally SLAM or a particle filter provides. Keep it `off` whenever one of them runs.
-  - `static`: fixed at the true start pose. `/odom` and everything drawn through it (`/scan`) drift away from the map.
-  - `truth`: follows the truth, like a perfect localizer. `base_link` sits on the true pose and `/scan` stays on the map. `/odom` still drifts.
-
-### `teleop_bridge` (`teleop_bridge.yaml`)
-
-Keyboard and Foxglove teleop speak `Twist`, the mux speaks Ackermann. This node converts, so teleop enters through the mux like the joystick does on the car: `/cmd_vel` → `/teleop`. `speed = linear.x`; steering from `angular.z`: `angular_mode: steering_angle` (rad, default) or `yaw_rate` (`atan(L·ω/v)`, `|v|` never below `min_speed`). Clamped to `max_steer`.
 
 ## Ideal mode
 
-`simcar <map> ideal:=true`: same nodes, topics and frames, with the imperfections off. Launch it and the normal run one after the other to see what each model changes.
-
-| Node | Overrides |
-|---|---|
-| `lidar_model` | `effects_enabled: false`, `blocks: 1` (no motion distortion), `publish_delay: 0.0` |
-| `actuation_model` | `command_delay`, `servo_delay`, `steer_offset`: 0.0; `servo_rate`, `accel_max`, `brake_max`: 1000.0 (the gym's own limits remain) |
-| `odom_model` | `speed_scale_error`, `speed_noise_std`, `speed_deadband`: 0.0 |
-| `debug_map_to_odom` | `truth`, unless set on the command line |
-
-Still there in ideal mode:
-
-- Scan at 40 Hz with rotating-sensor time fields; `inf` for beams with no wall within 25 m.
-- Mux timeout (0.2 s), VESC timeout (0.5 s), steering clamp.
-- `/odom` yaw drift from tyre slip. `debug_map_to_odom: truth` keeps the drawing on the map.
-
-The overrides are in `sim_car.launch.py` (`IDEAL_*`). They win over the parameter files.
+`simcar <map> ideal:=true`: same nodes, topics and frames, imperfections off (overrides in `TDD_Gym`). Launch it and the normal run one after the other to see what each model changes.
 
 ## Change parameters while running
 
@@ -227,20 +144,7 @@ docker compose exec arm bash -c "source /etc/bashrc_polimi && ros2 service call 
 
 ## Topics
 
-The first three are all the stack touches, on the simulator and on the car alike. The rest is for driving by hand, resetting, and evaluation.
-
-| Topic | Type | |
-|---|---|---|
-| `/scan` | `sensor_msgs/LaserScan`, frame `laser`, 40 Hz | out, `lidar_model` |
-| `/odom` | `nav_msgs/Odometry`, frame `odom`, 50 Hz | out, `odom_model` |
-| `/drive` | `ackermann_msgs/AckermannDriveStamped` | in (autonomy, mux priority 10) |
-| `/teleop` | `ackermann_msgs/AckermannDriveStamped` | in (mux priority 100), from `teleop_bridge` |
-| `/cmd_vel` | `geometry_msgs/Twist` | in (teleop) |
-| `/initialpose` | `geometry_msgs/PoseWithCovarianceStamped` | in (reset) |
-| `/map` | `nav_msgs/OccupancyGrid` | out |
-| `/ego_racecar/odom` | `nav_msgs/Odometry`, ground truth in `map` | out, evaluation only |
-| `/ego_racecar/collision` | `std_msgs/Bool` | out, evaluation only |
-| `/ackermann_cmd`, `/sim/drive`, `/sim/steering_command`, `/sim/scan_unused` | internal | – |
+The stack uses only `/scan`, `/odom`, TF `odom → base_link → laser`, and publishes `/drive`; never `ego_racecar/*`, which is the ground truth. The full list is in `TDD_Gym`.
 
 ## RViz (optional, via noVNC)
 
@@ -268,19 +172,6 @@ No model nodes, no mux, upstream config (ideal 250 Hz scan, `ego_racecar/*` fram
 docker compose exec arm bash \
   -c "source /etc/bashrc_polimi && ros2 launch f1tenth_gym_ros gym_bridge_launch.py open_foxglove:=false"
 ```
-
-## Known limits
-
-Where the simulator still differs from the car, or simplifies:
-
-- No camera, and no room with a taped track: the maps are tracks bounded by walls, which the [scope](../scope.md) no longer has. The LiDAR sees those walls; in the room it will see only the room.
-- Truth pose: the gym's single-track state is at the centre of gravity, and the bridge publishes it as `ego_racecar/base_link`. `polimi_sim` treats it as `base_link` (rear axle on the car): a 0.17 m offset.
-- Vehicle body parameters are the gym's `f1tenth` preset.
-- The truth pose changes at 100 Hz (physics step). `lidar_model` interpolates between steps and extrapolates up to 30 ms past the newest one.
-- Grazing loss and mixed pixels are computed from neighbouring beams, not from the map geometry.
-- `lidar_model` needs the bridge on wall-clock time: `use_sim_time: False` in `sim/gym.yaml`.
-- The gym's 3D car model and wheels stay on the `ego_racecar/*` frames.
-- `/initialpose` alone moves the truth, not `/odom`: wheel odometry keeps integrating, as on the car. `scripts/sim/reset.sh` also calls `/odom_model/reset`, which zeroes `/odom` and re-pins the `debug_map_to_odom:=static` overlay.
 
 ## Troubleshooting
 

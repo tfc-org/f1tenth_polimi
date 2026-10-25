@@ -1,0 +1,313 @@
+% ============================================================================
+% TDD --- F1tenth PoliMI simulator
+% Source: docs/software/simulator.md (technical sections folded in), ros2_ws/src/polimi_sim,
+%         TDD_F1tenth (car interface), simulation plans 01.4 and 01.5
+% ============================================================================
+\documentclass[11pt,a4paper]{article}
+
+\input{preamble}
+\input{doc}
+\docbrand{polimi}
+
+\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The simulator: gym, bridge and car models}{0.01}{F1tenth PoliMI team}
+\docclassification{Public}
+
+\newcommand{\prop}{\target{Proposed}}
+
+\begin{document}
+\docfrontmatter{
+0.01 & 2026-10-25 & F1tenth PoliMI team & Initial draft from \code{simulator.md} and \code{polimi\_sim} \\
+}
+
+% ============================================================================
+\section{Introduction}
+% ============================================================================
+\subsection{Purpose}
+This document defines how the simulator stands in for the car: what the gym computes, which model nodes sit between the gym and the stack, how they are configured, and where the simulator still differs from the car.
+
+\subsection{Scope}
+\begin{itemize}
+  \item \textbf{In scope:} f1tenth\_gym and f1tenth\_gym\_ros as used here, our \code{polimi\_sim} package (model nodes, launch, configs), the simulator side of the car interface (\code{hw:=sim}).
+  \item \textbf{Out of scope:} the stack and the car, in \code{TDD\_F1tenth}. How to run the simulator day to day is the runbook \code{docs/software/simulator.md}.
+\end{itemize}
+
+\subsection{References}
+\begin{itemize}
+  \item \code{RASD\_F1tenth}: FR-SIM-001 to 003, NFR-POR-001.
+  \item \code{TDD\_F1tenth}: the car interface (its Architecture and Interfaces sections), DEC-03 to DEC-10.
+  \item Simulation plan 01.4 (Jazzy, the JAX gym, \code{polimi\_sim} in our fork) and plan 01.5 (camera and IMU models).
+  \item Runbook \code{docs/software/simulator.md}; host shortcuts in \code{scripts/sim/}.
+\end{itemize}
+
+\subsection{Status Conventions}
+\dec\ agreed \quad \prop\ proposed, waiting for the team's confirmation \quad \target{01.5} later plan \quad \tbd\ open \quad [MEASURE] replace with a measurement on the car \quad [VERIFY] check against the real driver or firmware.
+
+\begin{caveat}
+\textbf{Today versus target.} This document describes the simulator as built today: ROS~2 Humble, f1tenth\_gym and f1tenth\_gym\_ros \code{dev-humble} pinned by \code{GYM\_REF} and \code{GYM\_ROS\_REF} in \code{docker/ros/Dockerfile}, \code{polimi\_sim} in this repo, and \code{ackermann\_mux} inside \code{sim\_car.launch.py}. Plan 01.4 moves it to Jazzy, the JAX gym (\code{dev-jax}) and the bridge \code{dev-jazzy}, with \code{polimi\_sim} in our fork \code{f1tenth\_gym\_polimi}; \code{TDD\_F1tenth} DEC-08 \prop\ then takes the mux out of the simulator.
+\end{caveat}
+
+% ============================================================================
+\section{Architecture}\label{sec:arch}
+% ============================================================================
+\begin{takeaway}
+\textbf{Key point.} The gym alone is too kind: a perfect scan 250 times a second, commands that act at once, a pose that is always exact. Code tuned on that breaks on the car. \code{polimi\_sim} puts model nodes between the gym and the stack, so the stack runs against the car's topics, frames, rates and imperfections. The gym stays the source of physics and ground truth.
+\end{takeaway}
+
+\subsection{Component View}
+\begin{docfigure}
+\begin{tikzpicture}
+  \node[ext, minimum height=3.6cm, text width=2.0cm] (gym) at (0,1.6) {\code{gym\_bridge}\\[4pt]physics\\truth pose\\250\,Hz};
+  \node[svc, text width=2.9cm] (lid) at (5.0,3.2) {\code{lidar\_model}};
+  \node[svc, text width=2.9cm] (odo) at (5.0,1.6) {\code{odom\_model}};
+  \node[svc, text width=2.9cm] (act) at (5.0,0) {\code{actuation\_model}};
+  \node[data] (scan) at (10.4,3.2) {\code{/scan}, \code{laser}, 40\,Hz};
+  \node[data] (odom) at (10.4,1.6) {\code{/odom}, TF, 50\,Hz};
+  \node[svc, text width=2.4cm] (mux) at (10.4,0) {\code{ackermann\_mux}};
+  \node[svc, text width=2.4cm] (tel) at (10.4,-1.6) {\code{teleop\_bridge}};
+  \draw[http] (gym.east |- lid) -- node[lbl, above] {truth pose} (lid.west);
+  \draw[http] (gym.east |- odo) -- node[lbl, above] {truth pose} (odo.west);
+  \draw[http] (act.west) -- node[lbl, above] {\code{/sim/drive}} node[lbl, below] {100\,Hz} (gym.east |- act);
+  \draw[http] (lid.east) -- (scan.west);
+  \draw[http] (odo.east) -- (odom.west);
+  \draw[http] (mux.west) -- node[lbl, above] {\code{/ackermann}} node[lbl, below] {\code{\_cmd}} (act.east);
+  \draw[http] (tel.north) -- node[lbl, right] {\code{/teleop} (100)} (mux.south);
+  \node[lbl, anchor=west] (drv) at (12.6,0.75) {\code{/drive} (10)};
+  \draw[http] (drv.south west) |- (mux.east);
+  \node[lbl, anchor=west] (cv) at (12.6,-0.85) {\code{/cmd\_vel}};
+  \draw[http] (cv.south west) |- (tel.east);
+\end{tikzpicture}
+\caption{The simulator graph today. The gym computes where the car really is; three model nodes turn that into what the car's sensors would report and what its actuators would do. The mux is the car's own; with DEC-08 of \code{TDD\_F1tenth} it moves to the stack's common layer.}\label{fig:graph}
+\end{docfigure}
+
+Read bottom-up: the stack publishes \code{/drive}, the mux lets teleop override it, \code{actuation\_model} delays and limits the command as the VESC and servo would, and the gym moves the car. From the new true pose, \code{lidar\_model} produces \code{/scan} and \code{odom\_model} produces \code{/odom}. A static TF \code{base\_link}\arrowto\code{laser} comes from \code{config/car/laser\_mount.yaml}. The truth, \code{map}\arrowto\code{ego\_racecar/base\_link} and \code{/ego\_racecar/odom}, is for evaluation only.
+
+\subsection{Components}
+\begin{tabularx}{\textwidth}{@{}L{3.2cm} L{4.6cm} Y@{}}
+\toprule
+\hd{Component} & \hd{Responsibility} & \hd{Interfaces} \\
+\midrule
+\endhead
+f1tenth\_gym & Physics: single-track model, collisions, ray caster & Python API \\
+\code{gym\_bridge} (f1tenth\_gym\_ros) & Runs the gym in ROS; truth pose and map & \code{/sim/drive} \arrowto\ truth TF, \code{/ego\_racecar/odom}, \code{/map}, \code{/sim/scan\_unused} \\
+\code{lidar\_model} & The SL450 as a rotating sensor with its errors & truth pose \arrowto\ \code{/scan} \\
+\code{odom\_model} & The car's \code{vesc\_to\_odom}, drift included & truth pose, \code{/sim/steering\_command} \arrowto\ \code{/odom}, TF \code{odom}\arrowto\code{base\_link} \\
+\code{actuation\_model} & The VESC and servo: delays, rates, limits, timeout & \code{/ackermann\_cmd} \arrowto\ \code{/sim/drive}, \code{/sim/steering\_command} \\
+\code{teleop\_bridge} & Keyboard and Foxglove teleop into the mux & \code{/cmd\_vel} \arrowto\ \code{/teleop} \\
+\code{ackermann\_mux} & The car's mux and \code{mux.yaml} (today) & \code{/teleop}, \code{/drive} \arrowto\ \code{/ackermann\_cmd} \\
+\code{sim\_car.launch.py} & Merges the configs, starts all of the above; \code{ideal:=true} & launch arguments \\
+\bottomrule
+\end{tabularx}
+
+\subsection{Deployment View}
+The simulator runs in the \code{arm} (Apple Silicon) and \code{x86} images only, never on the car (\code{jet}). The gym and the bridge are cloned at fixed commits during the image build; \code{polimi\_sim} and the configs are bind-mounted like the rest of the workspace. Foxglove connects on \code{ws://localhost:8765}; RViz through the optional noVNC container.
+
+\subsection{Design Decisions}
+IDs here are local to this document; \code{TDD\_F1tenth}'s are written with its name.
+
+\begin{tabularx}{\textwidth}{@{}L{1.4cm} L{4.2cm} Y@{}}
+\toprule
+\hd{ID} & \hd{Decision} & \hd{Rationale / alternatives} \\
+\midrule
+\endhead
+DEC-01 & Model nodes between gym and stack; the gym stays physics and truth \dec & The stack meets the car's rates, frames and errors without changing the gym. Each model can be switched off (ideal mode) to see what it changes. \\
+DEC-02 & Each thing is defined once, in its own file under \code{ros2\_ws/config/} \dec & Map, laser, mount and gym settings are chosen independently and merged at launch. The gym's own LiDAR takes its beams, angles, ranges and mount from the same laser and mount files, so the laser is never described twice. \\
+DEC-03 & The gym's LiDAR stays on, noise-free, on \code{/sim/scan\_unused} \dec & Its wall collision check runs on that scan. The stack's \code{/scan} comes only from \code{lidar\_model}. \\
+DEC-04 & Two frame trees: truth apart from the estimate \dec & \code{map}\arrowto\code{ego\_racecar/base\_link} is where the car is; \code{odom}\arrowto\code{base\_link}\arrowto\code{laser} is where it thinks it is. Nothing joins them except SLAM, localization or the debug option, so the stack cannot read the truth by accident (FR-SIM-003). \\
+DEC-05 & \code{lidar\_model} ray-casts with the gym's own caster \dec & From the truth pose composed with the mount, in blocks along the sweep, so motion distortion comes from real poses; the map matches the gym's. \\
+DEC-06 & Ideal mode is the same graph with overrides \dec & Same nodes, topics and frames; only the imperfections go. The overrides live in \code{sim\_car.launch.py} (\code{IDEAL\_*}) and win over the parameter files. \\
+DEC-07 & Controllers read beam angles from each \code{LaserScan} \dec & \code{angle\_min + i * angle\_increment}, never hard-coded indices, so the same code runs with any laser and on the car. \\
+DEC-08 & \code{sim/gym.yaml} is the bridge's \code{config/sim.yaml} at the pinned commit, minus our keys \dec & Re-copied when \code{GYM\_ROS\_REF} is bumped; its header lists what differs. \\
+DEC-09 & The mux leaves the simulator \prop & Follows \code{TDD\_F1tenth} DEC-08: the fork runs from a bare clone, the stack's common layer owns the mux, and \code{teleop\_bridge} publishes on \code{teleop\_topic}. \\
+\bottomrule
+\end{tabularx}
+
+% ============================================================================
+\section{Data}
+% ============================================================================
+\subsection{Configuration files}
+All under \code{ros2\_ws/config/}, bind-mounted: no rebuild. At launch the four are merged into the config the gym gets, written to \code{/tmp/polimi\_sim/gym\_<map>\_<lidar>.yaml}.
+
+\begin{tabularx}{\textwidth}{@{}L{3.4cm} Y L{3.2cm}@{}}
+\toprule
+\hd{File} & \hd{Holds} & \hd{Chosen with} \\
+\midrule
+\endhead
+\code{maps/<map>.yaml} & \code{map\_path}, start pose \code{sx}, \code{sy}, \code{stheta}; any other \code{gym\_bridge} parameter overrides \code{sim/gym.yaml} & \code{simcar <map>} \\
+\code{lidar/<lidar>.yaml} & The laser: rate, FOV, resolution, ranges, effects & \code{lidar:=<lidar>} (default \code{sl450}) \\
+\code{car/laser\_mount.yaml} & \code{base\_link}\arrowto\code{laser}: x 0.27, y 0, z 0.11\,m, yaw 0, roll 0 [MEASURE]; read by the car too (\code{TDD\_F1tenth} DEC-09) & -- \\
+\code{sim/gym.yaml} & Everything else: topics, vehicle preset, opponents & -- \\
+\bottomrule
+\end{tabularx}
+
+Maps today: \code{spielberg} (default; Red Bull Ring, a closed track about 2.2\,m wide) and \code{levine} (a corridor loop); the bridge also bundles \code{levine\_obs}, \code{levine\_blocked} and \code{blank}.
+
+\subsection{Model parameters}
+First guesses from datasheets and upstream defaults. \code{actuation\_model}, \code{odom\_model} and \code{teleop\_bridge} defaults are in \code{polimi\_sim/config/}; the laser's in \code{config/lidar/}. Live: all \code{lidar\_model} effects, all \code{actuation\_model} and \code{teleop\_bridge} values, the \code{odom\_model} error values. Fixed at start: rates, scan geometry, \code{range\_max}, topics, frames.
+
+\subsubsection{\code{lidar\_model} (\code{config/lidar/sl450.yaml})}
+\begin{tabularx}{\textwidth}{@{}L{4.2cm} L{3.0cm} Y@{}}
+\toprule
+\hd{Parameter} & \hd{Default} & \hd{Meaning} \\
+\midrule
+\endhead
+\code{rate\_hz} & 40 & SL450 rates: 15, 20, 25, 30, 40\,Hz \\
+\code{fov\_deg}, \code{resolution\_deg} & 270, 0.2 & 1351 beams; \code{time\_increment} $= 1/(\mathrm{rate}\cdot1800)$, \code{scan\_time} $= 1/\mathrm{rate}$: the sweep lasts 18.75\,ms at 40\,Hz \\
+\code{blocks} & 8 & Groups cast from the truth pose at their own time; 1 = no motion distortion \\
+\code{stamp\_at}, \code{publish\_delay} & \code{start}, 0.002\,s & [VERIFY] against the SL450 driver \\
+\code{no\_return\_value} & \code{'inf'} & REP 117 [VERIFY] \\
+\code{noise\_std} & 0.01\,m & Range noise \\
+\code{dropout\_prob} & 0.002 & Random missing beams \\
+\code{grazing\_dropout\_prob}, \code{grazing\_max\_deg} & 0.5, 80\textdegree & Loss at grazing incidence \\
+\code{reflectivity\_range\_max} & 15\,m & Low-reflectivity limit \\
+\code{mixed\_pixel\_prob}, \code{mixed\_pixel\_jump} & 0.3, 0.3\,m & Mixed pixels at range jumps \\
+\code{seed} & 0 & 0 = different every run \\
+\bottomrule
+\end{tabularx}
+Each effect is off at 0.0. Cost: 0.1\,ms per scan on the Mac, against a 5\,ms budget.
+
+\subsubsection{\code{actuation\_model} (\code{actuation\_model.yaml})}
+A command does not act at once: it travels to the VESC, the servo needs time to turn, the motor cannot change speed instantly, and the VESC stops the motor when commands stop. The node sits where the VESC would, on a 100\,Hz timer, and publishes the steering as sent to the VESC on \code{/sim/steering\_command} (\code{Float64}, rad).
+
+\begin{tabularx}{\textwidth}{@{}L{4.2cm} L{3.0cm} Y@{}}
+\toprule
+\hd{Parameter} & \hd{Default} & \hd{Meaning} \\
+\midrule
+\code{command\_delay} & 0.02\,s & Command transport \\
+\code{vesc\_timeout} & 0.5\,s & No command for longer: speed 0, steering held [VERIFY] in the VESC app config \\
+\code{steer\_offset} & 0.0\,rad & Servo trim \\
+\code{servo\_delay}, \code{servo\_rate} & 0.03\,s, 3.2\,rad/s & Servo response \\
+\code{max\_steer} & 0.4189\,rad & Steering clamp \\
+\code{accel\_max}, \code{brake\_max} & 4.0, 6.0\,m/s\textsuperscript{2} & Motor limits \\
+\bottomrule
+\end{tabularx}
+All [MEASURE] on the car. The gym still applies its own limits afterwards (steering 3.2\,rad/s, acceleration 9.51\,m/s\textsuperscript{2}).
+
+\subsubsection{\code{odom\_model} (\code{odom\_model.yaml})}
+Mirrors the car's \code{vesc\_to\_odom}: \code{/odom} (frame \code{odom}, child \code{base\_link}) and TF \code{odom}\arrowto\code{base\_link} at 50\,Hz, starting from 0.
+\begin{itemize}
+  \item Speed $=$ true longitudinal speed $\times$ (1 + \code{speed\_scale\_error} 0.02) + noise \code{speed\_noise\_std} 0.02\,m/s, zeroed below \code{speed\_deadband} 0.05\,m/s.
+  \item Yaw rate $= v\tan\delta / L$, with $\delta$ the \emph{commanded} steering and \code{wheelbase} $L$ 0.3302\,m (the gym's) [MEASURE]: the car's \code{vesc.yaml} has 0.25 (\code{TDD\_F1tenth} T-05).
+  \item The yaw rate reads high in corners (9\% at 1.5\,m/s, steering 0.25\,rad): the gym's tyres slip and the formula assumes they do not. \code{vesc\_to\_odom} on the car has the same error.
+  \item \code{debug\_map\_to\_odom}: \code{off} (default) whenever SLAM or localization runs; \code{static} fixes \code{map}\arrowto\code{odom} at the true start pose, so the drift shows (about 8\textdegree\ per 90\textdegree\ corner); \code{truth} follows the truth like a perfect localizer, so \code{/scan} stays on the map while \code{/odom} still drifts.
+  \item \code{/odom\_model/reset} (\code{std\_srvs/Empty}) zeroes \code{/odom} and re-pins the \code{static} overlay.
+\end{itemize}
+
+\subsubsection{\code{teleop\_bridge} (\code{teleop\_bridge.yaml})}
+Keyboard and Foxglove teleop speak \code{Twist}, the mux speaks Ackermann. \code{speed = linear.x}; the steering from \code{angular.z}, as \code{angular\_mode: steering\_angle} (rad, default) or \code{yaw\_rate} ($\arctan(L\omega/v)$, $|v|$ never below \code{min\_speed}); clamped to \code{max\_steer}.
+
+\subsection{Ideal mode}
+\code{ideal:=true} keeps the nodes, topics and frames and switches the imperfections off (DEC-06).
+
+\begin{tabularx}{\textwidth}{@{}L{3.4cm} Y@{}}
+\toprule
+\hd{Node} & \hd{Overrides} \\
+\midrule
+\code{lidar\_model} & \code{effects\_enabled: false}, \code{blocks: 1}, \code{publish\_delay: 0.0} \\
+\code{actuation\_model} & \code{command\_delay}, \code{servo\_delay}, \code{steer\_offset}: 0.0; \code{servo\_rate}, \code{accel\_max}, \code{brake\_max}: 1000.0 (the gym's own limits remain) \\
+\code{odom\_model} & \code{speed\_scale\_error}, \code{speed\_noise\_std}, \code{speed\_deadband}: 0.0 \\
+\code{debug\_map\_to\_odom} & \code{truth}, unless set on the command line \\
+\bottomrule
+\end{tabularx}
+
+Still there in ideal mode: the 40\,Hz scan with rotating-sensor time fields and \code{inf} beyond 25\,m; the mux timeout (0.2\,s), the VESC timeout (0.5\,s) and the steering clamp; the \code{/odom} yaw drift from tyre slip.
+
+% ============================================================================
+\section{Interfaces}\label{sec:interfaces}
+% ============================================================================
+\subsection{Simulator versus car}
+\begin{tabularx}{\textwidth}{@{}L{2.0cm} Y Y L{2.6cm}@{}}
+\toprule
+\hd{} & \hd{Gym alone} & \hd{\code{simcar}} & \hd{Car} \\
+\midrule
+\endhead
+\code{/scan} & 250\,Hz, all beams at one instant, frame \code{ego\_racecar/laser} & 40\,Hz, rotating-sensor timing and motion distortion, frame \code{laser} & SL450 driver \\
+Scan errors & Gaussian noise & noise, dropouts, grazing loss, 15\,m low-reflectivity limit, mixed pixels & real \\
+Command path & \code{/drive} straight into physics, held forever & \code{/drive} \arrowto\ \code{ackermann\_mux} \arrowto\ \code{actuation\_model} & mux \arrowto\ VESC \\
+Actuation & ideal & command delay, VESC timeout, servo delay and rate, accel and brake limits & VESC, servo \\
+Odometry & truth in \code{map} & speed scale error and noise, yaw rate from the commanded steering; drifts & \code{vesc\_to\_odom} \\
+Frames & \code{map}\arrowto\code{ego\_racecar/base\_link}\arrowto\code{ego\_racecar/laser} & \code{odom}\arrowto\code{base\_link}\arrowto\code{laser}, truth tree apart & \code{odom}\arrowto\code{base\_link}\arrowto\code{laser} \\
+Teleop & \code{/cmd\_vel} into physics & \code{/cmd\_vel} \arrowto\ \code{teleop\_bridge} \arrowto\ \code{/teleop} \arrowto\ mux & joystick \arrowto\ \code{/teleop} \arrowto\ mux \\
+\bottomrule
+\end{tabularx}
+
+\subsection{Topics}
+The stack may use only \code{/scan}, \code{/odom} and TF \code{odom}\arrowto\code{base\_link}\arrowto\code{laser}, and publish \code{/drive}. It never reads \code{ego\_racecar/*} or \code{/ego\_racecar/odom}: that is the ground truth, which the car does not have (FR-SIM-003).
+
+\begin{tabularx}{\textwidth}{@{}L{4.4cm} L{5.4cm} Y@{}}
+\toprule
+\hd{Topic} & \hd{Type} & \hd{Direction} \\
+\midrule
+\endhead
+\code{/scan} & \code{LaserScan}, frame \code{laser}, 40\,Hz & out, \code{lidar\_model} \\
+\code{/odom} & \code{Odometry}, frame \code{odom}, 50\,Hz & out, \code{odom\_model} \\
+\code{/drive} & \code{AckermannDriveStamped} & in, autonomy, mux priority 10 \\
+\code{/teleop} & \code{AckermannDriveStamped} & in, mux priority 100, from \code{teleop\_bridge} \\
+\code{/cmd\_vel} & \code{Twist} & in, teleop \\
+\code{/initialpose} & \code{PoseWithCovarianceStamped} & in, reset of the true pose \\
+\code{/map} & \code{OccupancyGrid} & out \\
+\code{/ego\_racecar/odom} & \code{Odometry}, truth in \code{map} & out, evaluation only \\
+\code{/ego\_racecar/collision} & \code{Bool} & out, evaluation only \\
+\code{/ackermann\_cmd}, \code{/sim/drive}, \code{/sim/steering\_command}, \code{/sim/scan\_unused} & internal & -- \\
+\bottomrule
+\end{tabularx}
+
+% ============================================================================
+\section{Requirements Traceability}
+% ============================================================================
+\begin{tabularx}{\textwidth}{@{}L{2.6cm} L{4.4cm} Y@{}}
+\toprule
+\hd{Requirement} & \hd{Component(s)} & \hd{Test(s)} \\
+\midrule
+\code{FR-SIM-001} & model nodes, configs (DEC-01, DEC-02) & \code{ros2 topic info} and \code{tf2\_echo} against the car interface \\
+\code{FR-SIM-002} & mux, \code{actuation\_model} timeouts; locks and AEB with \code{TDD\_F1tenth} & AC-V1-04 in the simulator \\
+\code{FR-SIM-003} & two frame trees (DEC-04) & no stack node subscribes to \code{ego\_racecar/*} \\
+\code{NFR-POR-001} & \code{arm} and \code{x86} images & the same \code{simcar} on both \\
+\bottomrule
+\end{tabularx}
+
+% ============================================================================
+\section{Testing}
+% ============================================================================
+\begin{tabularx}{\textwidth}{@{}L{3cm} L{4cm} Y@{}}
+\toprule
+\hd{Level} & \hd{Scope} & \hd{Tooling / gate} \\
+\midrule
+Unit & Model logic, plain Python without ROS, on synthetic data & pytest in \code{polimi\_sim/test} \\
+Comparison & Each model against the gym alone & ideal mode against the normal run; \code{effects\_enabled false} against \code{/sim/scan\_unused} (they match standing still except where the gym rounds beam angles to a table) \\
+System & The stack on the simulator & AC-V1-02 and 04 in the simulator first (\code{RASD\_F1tenth}) \\
+\bottomrule
+\end{tabularx}
+
+% ============================================================================
+\section{Known Limits}
+% ============================================================================
+Where the simulator still differs from the car, or simplifies:
+\begin{itemize}
+  \item No camera, and no room with a taped track: the maps are tracks bounded by walls, which the project's environment no longer has (\code{RASD\_F1tenth} C-001 to C-005). The LiDAR sees those walls; in the room it will see only the room. Camera and IMU models: \target{01.5}.
+  \item Truth pose: the gym's single-track state is at the centre of gravity, published as \code{ego\_racecar/base\_link}. \code{polimi\_sim} treats it as \code{base\_link} (the rear axle on the car): a 0.17\,m offset.
+  \item Vehicle body parameters are the gym's \code{f1tenth} preset.
+  \item The truth pose changes at 100\,Hz (the physics step). \code{lidar\_model} interpolates between steps and extrapolates up to 30\,ms past the newest.
+  \item Grazing loss and mixed pixels come from neighbouring beams, not from the map geometry.
+  \item \code{lidar\_model} needs the bridge on wall-clock time: \code{use\_sim\_time: False} in \code{sim/gym.yaml}.
+  \item The gym's 3D car model and wheels stay on the \code{ego\_racecar/*} frames.
+  \item A wall hit makes the truth jump: the gym zeroes the car's heading on collision; \code{/odom} does not follow.
+  \item \code{/initialpose} alone moves the truth, not \code{/odom}: wheel odometry keeps integrating, as on the car.
+\end{itemize}
+
+% ============================================================================
+\section{Open Items}
+% ============================================================================
+\begin{tabularx}{\textwidth}{@{}L{1.2cm} L{4.2cm} Y@{}}
+\toprule
+\hd{ID} & \hd{Topic} & \hd{Notes} \\
+\midrule
+\endhead
+S-01 & Deadman and e-stop stand-in & No USB passthrough on Docker Desktop for macOS, so no joystick in the container (\code{TDD\_F1tenth} T-01). \\
+S-02 & Measured values [MEASURE] & Laser mount, actuation parameters and wheelbase from the car, once built. \\
+S-03 & SL450 driver behaviour [VERIFY] & \code{stamp\_at}, \code{publish\_delay}, \code{no\_return\_value}, and the VESC timeout. \\
+S-04 & Room maps & A room with a taped track in place of the walled tracks, with the camera model (plan 01.5). \\
+S-05 & Migration & Plan 01.4: Jazzy, the JAX gym, \code{polimi\_sim} in \code{f1tenth\_gym\_polimi}; the mux leaves the simulator (DEC-09). \\
+\bottomrule
+\end{tabularx}
+
+\end{document}
