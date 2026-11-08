@@ -10,7 +10,7 @@
 \input{doc}
 \docbrand{polimi}
 
-\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The car: stack, car interface and deployment}{0.01}{F1tenth PoliMI team}
+\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The car: stack, car interface and deployment}{0.02}{F1tenth PoliMI team}
 \docclassification{Public}
 
 \newcommand{\prop}{\target{Proposed}}
@@ -18,6 +18,7 @@
 \begin{document}
 \docfrontmatter{
 0.01 & 2026-10-25 & F1tenth PoliMI team & Initial draft from the car-interface design proposal and the runbooks; \code{car.md} and the hardware studies folded in (\cref{sec:hwsel}) \\
+0.02 & 2026-11-08 & F1tenth PoliMI team & Review of v0.01: DEC-08 follows the Jazzy migration; DEC-12 allows our packages in a fork's own folder; JetPack 7.2.1 on the car (DEC-13); Jazzy migration summarised (\cref{sec:migration}); stop-test chain, steering limits (T-12) and the \code{/joy} stand-in owner; references to working notes removed \\
 }
 
 % ============================================================================
@@ -35,8 +36,6 @@ This document defines how the car's software is built: the layers of the stack, 
 \subsection{References}
 \begin{itemize}
   \item \code{RASD\_F1tenth} --- requirements refined here.
-  \item Car-interface design proposal, 24 Oct 2026 (the source of \cref{sec:arch,sec:interfaces}).
-  \item Simulation plan 01.4, migration to Jazzy, the JAX gym and the simulator in our fork.
   \item The README (first-time setup), \code{CONTRIBUTING.md} (git workflow, access, rulesets) and the runbooks \code{docs/software/docker.md} and \code{simulator.md}.
   \item \code{TDD\_Gym}, the simulator's design.
   \item Hardware studies: LiDAR (23 Sep 2026), camera (7 Oct 2026), chassis (24 Sep 2026), folded into \cref{sec:hwsel}.
@@ -46,7 +45,7 @@ This document defines how the car's software is built: the layers of the stack, 
 \dec\ agreed \quad \prop\ proposed, waiting for the team's confirmation \quad \target{V2} later phase \quad \tbd\ open.
 
 \begin{caveat}
-\textbf{Today versus target.} The images run ROS~2 Humble today and the drivers come from \code{humble-polimi}. Jazzy is decided (DEC-01) and the migration is planned (plan 01.4), not done. This document describes the Jazzy target; where today differs, it says so.
+\textbf{Today versus target.} The images run ROS~2 Humble today and the drivers come from \code{humble-polimi}. Jazzy is decided (DEC-01) and the migration is planned (\cref{sec:migration}), not done. This document describes the Jazzy target; where today differs, it says so.
 \end{caveat}
 
 % ============================================================================
@@ -144,8 +143,8 @@ Each topic in the middle column is part of the car interface. The car and the si
   \foreach \y/\c/\t/\s [count=\i] in {
       4.4/{\code{orbbec\_camera} LiDAR}/{\code{/scan}, frame \code{laser}}/{LiDAR model},
       3.3/{\code{vesc\_to\_odom}}/{\code{/odom}, TF \code{odom}\arrowto\code{base\_link}}/{odometry model},
-      2.2/{\code{orbbec\_camera} Gemini}/{camera image, info}/{camera model (01.5)},
-      1.1/{\code{orbbec\_camera} Gemini}/{IMU}/{IMU model (01.5)},
+      2.2/{\code{orbbec\_camera} Gemini}/{camera image, info}/{camera model},
+      1.1/{\code{orbbec\_camera} Gemini}/{IMU}/{IMU model},
       0.0/{\code{car.launch.py}}/{static TF mounts}/{\code{polimi\_sim}}} {
     \node[ext, minimum width=3.2cm, minimum height=0.8cm] (c\i) at (0,\y) {\c};
     \node[data, minimum width=3.6cm, minimum height=0.8cm] (t\i) at (6,\y) {\t};
@@ -175,7 +174,7 @@ One Docker image per machine type, built from \code{docker/ros/Dockerfile}. The 
 \bottomrule
 \end{tabularx}
 
-Base image \code{ros:jazzy} on Ubuntu 24.04 (DEC-01); today \code{ros:humble}. Middleware \code{rmw\_zenoh\_cpp}; the Zenoh router starts with the container.
+Base image \code{ros:jazzy} on Ubuntu 24.04 (DEC-01); today \code{ros:humble}. On the car the host is JetPack 7.2.1, also Ubuntu 24.04, so the container can use the GPU (DEC-13). Middleware \code{rmw\_zenoh\_cpp}; the Zenoh router starts with the container.
 
 \subsubsection{The car}
 \begin{tabularx}{\textwidth}{@{}L{3.6cm} L{3.4cm} Y@{}}
@@ -196,7 +195,7 @@ VESC 6 MkVI & USB, \code{/dev/sensors/vesc} (udev rule \tbd) & \code{vesc\_drive
 \midrule
 \code{f1tenth\_polimi} & -- (this repo) & Our packages, configs, maps, Docker, docs \\
 \code{f1tenth\_system\_polimi} & \code{ros2\_ws/src/f1tenth\_system} & Upstream drivers, branch \code{jazzy-polimi} (today \code{humble-polimi}) \\
-\code{f1tenth\_gym\_polimi} & \code{ros2\_ws/src/f1tenth\_gym\_ros} (plan 01.4) & Upstream bridge plus \code{polimi\_sim}, branch \code{dev-jazzy-polimi} \\
+\code{f1tenth\_gym\_polimi} & \code{ros2\_ws/src/f1tenth\_gym\_ros} (after the migration) & Upstream bridge plus \code{polimi\_sim}, branch \code{dev-jazzy-polimi} \\
 \bottomrule
 \end{tabularx}
 
@@ -209,7 +208,7 @@ One entry point, \code{stack.launch.py}, with \code{hw:=car} or \code{hw:=sim}. 
   \begin{itemize}
     \item \code{common.launch.py}: \code{ackermann\_mux} with our \code{mux.yaml}, safety.
     \item \code{car.launch.py} (\code{hw:=car}): \code{f1tenth\_system}'s driver nodes one by one, \code{orbbec\_camera}, the mount TF from \code{config/car/}.
-    \item \code{sim.launch.py} (\code{hw:=sim}): includes the fork's \code{sim\_car.launch.py} with \code{teleop\_topic:=teleop} and \code{config\_dir:=\textasciitilde/ws/config}, nothing else.
+    \item \code{sim.launch.py} (\code{hw:=sim}): includes the fork's \code{sim\_car.launch.py} with \code{config\_dir:=\textasciitilde/ws/config} and, from DEC-08, \code{teleop\_topic:=teleop}; nothing else.
     \item the logic: SLAM or localization, line detection, controller, as asked.
   \end{itemize}
 \end{itemize}
@@ -222,17 +221,18 @@ Today the car starts with \code{f1tenth\_stack}'s \code{no\_lidar\_bringup\_laun
 \midrule
 \endhead
 DEC-01 & ROS~2 Jazzy on every image \dec & Humble ends on 31 May 2027, before or during the summer school; Jazzy is supported to 31 May 2029. Lyrical is too new: no \code{f1tenth\_gym\_ros} branch, no JetPack for its Ubuntu. (OI-13, 21 Oct 2026.) \\
-DEC-02 & One image rebuild adds \code{nav2\_amcl}, \code{robot\_localization}, \code{image\_transport\_plugins}, \code{cv\_bridge} \dec & In the Jazzy base apt layer, so AMCL and the EKF can be tried before any stack package exists. \code{cv\_bridge} brings apt's \code{python3-opencv}; the apt layer goes first and pip after, so the gym's pip \code{cv2} and NumPy shadow apt's. Python nodes never import \code{cv\_bridge} (its Python module breaks under the gym's NumPy~2) and convert images with NumPy; C++ nodes are unaffected. A \code{numpy<2} pin is no fallback, as the JAX gym needs NumPy $\geq$ 2.2: if a Python node ever needs \code{cv\_bridge}, build it from source against NumPy~2. Check after the rebuild: gate G-M2, plan 01.4 M1.2. (OI-10, 22 Oct 2026.) \\
+DEC-02 & One image rebuild adds \code{nav2\_amcl}, \code{robot\_localization}, \code{image\_transport\_plugins}, \code{cv\_bridge} \dec & In the Jazzy base apt layer, so AMCL and the EKF can be tried before any stack package exists. \code{cv\_bridge} brings apt's \code{python3-opencv}; the apt layer goes first and pip after, so the gym's pip \code{cv2} and NumPy shadow apt's. Python nodes never import \code{cv\_bridge} (its Python module breaks under the gym's NumPy~2) and convert images with NumPy; C++ nodes are unaffected. A \code{numpy<2} pin is no fallback, as the JAX gym needs NumPy $\geq$ 2.2: if a Python node ever needs \code{cv\_bridge}, build it from source against NumPy~2. Checked after the rebuild (\cref{sec:migration}, step 1). (OI-10, 22 Oct 2026.) \\
 DEC-03 & Seam below the mux, at \code{/ackermann\_cmd} \prop & The simulator replaces the VESC, the motor, the chassis and the sensors, nothing above them. With the mux above the seam, takeover, deadman and AEB are the same nodes in both places. (R1) \\
 DEC-04 & Plain topics are the contract; no extension mechanism \prop & Our launch includes the fork's launch with two arguments; one switch, \code{hw:=}. No new code in the fork, and the contract can be checked with \code{ros2 topic info} on both sides. (R2) \\
 DEC-05 & \code{polimi\_bringup} holds the contract and the launches; one package per function for the logic \prop & Functions have different dependencies (the camera stack versus none) and their own tests; one bringup package keeps how it all starts in one place. (R3) \\
 DEC-06 & Our own \code{car.launch.py}, not \code{f1tenth\_stack}'s bringup \prop & Upstream's \code{bringup\_launch.py} starts the Hokuyo driver, its own mux and a hard-coded laser TF, none of which match our car. \code{f1tenth\_system} stays a pure upstream fork: the scope's ``our fork, extended with all our drivers'' (\code{RASD\_F1tenth} C-022) becomes ``its driver packages, launched by our bringup''. (R4) \\
 DEC-07 & Our own \code{mux.yaml}, in \code{polimi\_bringup/config/} \prop & Starts from today's values (joystick 100, autonomy 10). OI-09 adds the e-stop and deadman locks and the AEB input, and those are ours, not upstream's. (R5) \\
-DEC-08 & The simulator fork runs from a bare clone \prop & \code{polimi\_sim} drops the mux node and its \code{ackermann\_mux} and \code{f1tenth\_stack} dependencies, and gains \code{teleop\_topic} (default \code{ackermann\_cmd}). Replaces decision~8 of plan 01.4, which made the fork depend on \code{f1tenth\_system}. (R6) \\
+DEC-08 & The simulator fork runs from a bare clone, after the Jazzy migration \prop & During the migration the fork keeps \code{ackermann\_mux} in \code{sim\_car.launch.py} and needs \code{f1tenth\_system} next to it, so the migration changes only the distro, the gym and the repo layout (8 Nov 2026). Afterwards, with \code{polimi\_bringup}'s \code{common.launch.py}: \code{polimi\_sim} drops the mux node and its \code{ackermann\_mux} and \code{f1tenth\_stack} dependencies, and gains \code{teleop\_topic} (default \code{ackermann\_cmd}). Earlier, the simulator would have no mux until the common layer exists. (R6) \\
 DEC-09 & The hardware side publishes the mount TF, from the same files \prop & Car: \code{car.launch.py} from \code{config/car/*.yaml}. Simulator: \code{polimi\_sim} from the same files via \code{config\_dir}. One file, two readers. (R7) \\
 DEC-10 & \code{odom}\arrowto\code{base\_link} has one owner at a time \prop & The odometry publishes it until the EKF lands (OI-08); then the EKF does, and \code{publish\_tf} goes off on car and simulator in the same change. Two publishers make the tree jump. (R8) \\
 DEC-11 & Everything runs in Docker, code bind-mounted \dec & Same images on Mac, PC and car; the host needs only Docker and git. \\
-DEC-12 & Forks stay upstream plus upstreamable fixes; our code in \code{polimi\_*} packages \dec & Upstream fixes can be pulled; only fixes we cannot make from outside go into a fork. \\
+DEC-12 & In a fork, upstream's files take only upstreamable fixes; our code lives in \code{polimi\_*} packages, in our repo or in a fork's own folder \dec & Upstream fixes can be pulled and offered back, one commit each; only fixes we cannot make from outside touch upstream's files. \code{polimi\_sim} lives in the simulator fork's \code{polimi\_sim/} folder, never mixed with upstream's files (RASD NFR-MNT-001). \\
+DEC-13 & JetPack 7.2.1 on the Orin Nano \dec & Jetson Linux 39.2.1, Ubuntu 24.04 like the \code{ros:jazzy} containers, CUDA 13: the GPU is usable from the container (RASD C-024), for example by a learned line detector (OI-06). JetPack 6 is Ubuntu 22.04, where a 24.04 container runs on the CPU only. (8 Nov 2026.) \\
 \bottomrule
 \end{tabularx}
 
@@ -277,8 +277,8 @@ Only \code{/ackermann\_cmd} goes from the stack to the hardware; every other row
 \code{/scan}, frame \code{laser} & \code{LaserScan} & \code{orbbec\_camera} LiDAR & LiDAR model \\
 \code{/odom} & \code{Odometry} & \code{vesc\_to\_odom} & odometry model \\
 TF \code{odom}\arrowto\code{base\_link} & TF & \code{vesc\_to\_odom} & odometry model \\
-camera image, info & \code{Image}, \code{CameraInfo} & \code{orbbec\_camera} & camera model (plan 01.5) \\
-IMU & \code{Imu} & \code{orbbec\_camera} & IMU model (plan 01.5) \\
+camera image, info & \code{Image}, \code{CameraInfo} & \code{orbbec\_camera} & camera model (\code{TDD\_Gym}) \\
+IMU & \code{Imu} & \code{orbbec\_camera} & IMU model (\code{TDD\_Gym}) \\
 TF \code{base\_link}\arrowto\code{laser}, \code{camera\_link} & static TF & \code{car.launch.py} & \code{polimi\_sim} \\
 \bottomrule
 \end{tabularx}
@@ -315,7 +315,7 @@ TF \code{base\_link}\arrowto\code{laser}, \code{camera\_link} & static TF & \cod
 \code{FR-DRV-003} & \code{orbbec\_camera} & bench: rates of \code{/scan}, image, IMU \\
 \code{FR-DRV-004} & \code{car.launch.py} (DEC-09) & \code{tf2\_echo base\_link laser} matches \code{laser\_mount.yaml} \\
 \code{FR-MAP-001}, \code{002} & \code{slam\_toolbox} & AC-V1-01 \\
-\code{FR-LOC-001}, \code{002} & AMCL & AC-V1-01 \\
+\code{FR-LOC-001}, \code{002} & AMCL (default, OI-07) & AC-V1-01 \\
 \code{FR-LOC-003} & EKF (DEC-10) & \tbd[OI-08] \\
 \code{FR-LIN-001}, \code{002} & \code{polimi\_lines} & recorded camera data; AC-V1-02 \\
 \code{FR-PTH-001} to \code{008} & \code{polimi\_control} & unit tests on the error and window search; AC-V1-02, 03 \\
@@ -327,11 +327,11 @@ TF \code{base\_link}\arrowto\code{laser}, \code{camera\_link} & static TF & \cod
 \code{NFR-POR-001} & images, DEC-01, DEC-11 & the same launch on \code{arm}, \code{x86}, \code{jet} \\
 \code{NFR-VAR-001}, \code{002} & logic & laps on more than one layout and room \\
 \code{NFR-VAR-003} & \code{polimi\_lines} & \tbd[OI-06], once floor and tape are known \\
-\code{NFR-PER-001} & logic, controller & \tbd: no target yet \\
+\code{NFR-PER-001} & logic, controller & laps at 3\,m/s (AC-V1-02) \\
 \code{NFR-PER-002} & \code{orbbec\_camera} LiDAR & bench: \code{ros2 topic hz /scan} \\
-\code{NFR-PER-003} & \code{orbbec\_camera} camera & bench: \code{ros2 topic hz} on the image \\
-\code{NFR-PER-004} & \code{orbbec\_camera}, \code{vesc\_driver} & \tbd: method to measure timestamp error \\
-\code{NFR-PER-005} & \code{mux.yaml} & stop sending \code{/drive}: the car stops within 0.2\,s \\
+\code{NFR-PER-003} & \code{orbbec\_camera} camera & bench: \code{ros2 topic hz} on the image, $\geq$ 30\,fps; 60\,fps once 1280\x720 at 60 in YUYV is verified \\
+\code{NFR-PER-004} & \code{orbbec\_camera}, \code{vesc\_driver} & \tbd: method defined with the car's measurement session \\
+\code{NFR-PER-005} & \code{mux.yaml}, VESC & stop sending \code{/drive}: the mux drops it after 0.2\,s and the VESC timeout stops the motor (0.5\,s in the simulator, the VESC app value on the car) [VERIFY] \\
 \code{NFR-SAF-001} & mux, locks, AEB & AC-V1-04, in the simulator and on the car \\
 \code{NFR-SAF-002} & test plan & AC-V1-04 passed on the car before autonomous laps \\
 \code{NFR-MNT-001}, \code{002} & development standards (DEC-12) & PR review \\
@@ -349,7 +349,7 @@ TF \code{base\_link}\arrowto\code{laser}, \code{camera\_link} & static TF & \cod
 \midrule
 \endhead
 Compute & Jetson Orin Nano Super, 500\,GB NVMe & BOM; fits the F1TENTH deck \\
-OS, container & Ubuntu 24.04 images, Docker; JetPack 6 on the car \tbd[T-10] & DEC-01, DEC-11 \\
+OS, container & Ubuntu 24.04 images, Docker; JetPack 7.2.1 on the car, GPU through the NVIDIA Container Toolkit \tbd[T-10] & DEC-01, DEC-11, DEC-13 \\
 Middleware & ROS~2 Jazzy, \code{rmw\_zenoh\_cpp} & DEC-01 \\
 Drivers & \code{f1tenth\_system} (\code{vesc}, \code{ackermann\_mux}, \code{teleop\_tools}), \code{orbbec\_camera} & C-022 \\
 Mapping, localization & \code{slam\_toolbox}, \code{nav2\_amcl}, \code{robot\_localization} & scope; DEC-02 \\
@@ -360,13 +360,23 @@ Python & system Python of the image; \code{uv} on the host & house rule \\
 
 \subsection{Plan}
 \begin{enumerate}
-  \item \textbf{Plan 01.4:} Jazzy images, the JAX gym, the simulator fork as a submodule.
-  \item \textbf{\code{polimi\_bringup}:} the car interface README, \code{stack.launch.py}, \code{sim.launch.py}, \code{common.launch.py}, our \code{mux.yaml}; \code{simcar} calls \code{hw:=sim}.
-  \item \textbf{Safety:} OI-09 locks and AEB, tested in the simulator.
+  \item \textbf{Jazzy migration} (\cref{sec:migration}): Jazzy images, the JAX gym, the simulator fork as a submodule.
+  \item \textbf{\code{polimi\_bringup}:} the car interface README, \code{stack.launch.py}, \code{sim.launch.py}, \code{common.launch.py}, our \code{mux.yaml}; \code{simcar} calls \code{hw:=sim}; with DEC-08 the mux leaves the simulator fork.
+  \item \textbf{Safety:} OI-09 locks and AEB, with the \code{/joy} stand-in (T-01), tested in the simulator.
   \item \textbf{Logic:} mapping and localization, line detection, path following, as the base platform needs.
   \item \textbf{Car bringup}, when the car is built: \code{car.launch.py}, udev rules, measured configs, safety tests on the car.
   \item \textbf{Advanced topic} \target{V2}, once OI-01 is decided.
 \end{enumerate}
+
+\subsection{Jazzy migration}\label{sec:migration}
+Moves every image to ROS~2 Jazzy, the simulator to the JAX gym, and \code{polimi\_sim} into the simulator fork. Four steps, each checked before the next; the distro, the gym and the frames change in separate commits, so a failure points to one change.
+\begin{enumerate}
+  \item \textbf{Image:} every image on \code{ros:jazzy}, \code{f1tenth\_system} on \code{jazzy-polimi}, the DEC-02 packages, and the same gym and bridge as today, so a breakage is about ROS only. Checks: the images build for any host UID (Ubuntu 24.04 images ship a user with UID 1000); \code{cv2} and NumPy load from the gym's pip copies (DEC-02); the packages and drivers build; today's simulator runs.
+  \item \textbf{Simulator in the fork:} \code{polimi\_sim} moves into \code{f1tenth\_gym\_polimi} with its history and is ported to the JAX gym and the \code{dev-jazzy} bridge, with labelled default configs and a config overlay (\code{TDD\_Gym}). The mux stays in the fork until DEC-08.
+  \item \textbf{Submodule:} the fork becomes \code{ros2\_ws/src/f1tenth\_gym\_ros}, \code{polimi\_sim} leaves this repo, and the measured car configs stay in \code{ros2\_ws/config/}. Steps 2 and 3 merge together. Checks: the workspace layout; on the new gym, the scan matches the gym's beam by beam and physics keeps $\geq$ 95\,\% of 100\,Hz on the Mac; the config overlay logs each file's source.
+  \item \textbf{GitHub:} default branches and rules move to the Jazzy branches; the Humble images and volumes are removed after acceptance.
+\end{enumerate}
+Rollback: the Humble images, volumes and branches stay until step 4, so going back is a revert and the old image tags.
 
 \subsection{Development Standards}
 \begin{itemize}
@@ -404,17 +414,18 @@ As in \code{RASD\_F1tenth}: AC-V1-01 to 04 for the base platform, AC-V2-A or AC-
 \hd{ID} & \hd{Topic} & \hd{Notes} \\
 \midrule
 \endhead
-T-01 & Deadman and e-stop in the simulator & Docker Desktop on macOS has no USB passthrough, so there is no joystick in the container. The locks need a stand-in for \code{/joy}: a keyboard key that toggles the deadman, or a joystick read on the Mac and bridged in. Settle with OI-09. \\
+T-01 & Deadman and e-stop in the simulator & Docker Desktop on macOS has no USB passthrough, so there is no joystick in the container. The locks need a stand-in for \code{/joy}: a keyboard or Foxglove key that holds the deadman and toggles the emergency stop, built with the OI-09 locks (Plan, step 3). \\
 T-02 & Camera and IMU topic names [VERIFY] & From \code{orbbec\_camera}'s Gemini launch, once the camera is on the bench; the simulator's camera model uses the same names. \\
 T-03 & LiDAR frame name [VERIFY] & From \code{orbbec\_camera}'s \code{lidar.launch.py}; set it to \code{laser} in \code{car.launch.py} if it differs. \\
-T-04 & Confirm DEC-03 to DEC-10 & The proposal amends plan 01.4: decision 8 withdrawn, M2 and M3 change, \code{RASD\_F1tenth} C-022 is reworded. \\
+T-04 & Confirm DEC-03 to DEC-10 & DEC-08 is decided to follow the Jazzy migration (8 Nov 2026). The others are still Proposed; with DEC-06, \code{RASD\_F1tenth} C-022 is reworded. \\
 T-05 & Wheelbase & \code{vesc.yaml} has 0.25\,m, the simulated odometry the gym's 0.3302\,m. Measure the car and align both. \\
 T-06 & Mount measurements [MEASURE] & \code{laser\_mount.yaml} holds f1tenth's defaults; the camera mount file does not exist yet. \\
 T-07 & VESC device & udev rule on the Jetson for \code{/dev/sensors/vesc}, expected by \code{vesc.yaml}. \\
-T-08 & \code{orbbec\_camera} version & 2.9.3 is in the Jazzy apt repo; check it with the SL450's firmware (plan 01.4, M-O8). \\
+T-08 & \code{orbbec\_camera} version & 2.9.3 is in the Jazzy apt repo; check it with the SL450's firmware at car bringup. \\
 T-09 & Unmatched remap & Today's bringup remaps \code{ackermann\_cmd\_out}\arrowto\code{ackermann\_drive}, which matches nothing: the mux publishes \code{ackermann\_cmd}. Gone with DEC-06. \\
-T-10 & JetPack and Ubuntu 24.04 [VERIFY] & JetPack 6 is based on Ubuntu 22.04. Check that the \code{jet} service runs a \code{ros:jazzy} (24.04) container with \code{runtime: nvidia} on the Orin Nano. \\
+T-10 & CUDA in the container [VERIFY] & With JetPack 7.2.1 (DEC-13), check at bringup how CUDA reaches the \code{ros:jazzy} container through the NVIDIA Container Toolkit: mounted from the host, or installed in the \code{jet} image. \\
 T-11 & Battery connector [BOM GAP] & The VESC has XT90; the BOM has no TRX (Traxxas High-Current) to XT90 adapter. Check the Zeee 3S packs' connector (\cref{sec:chassis}). \\
+T-12 & Steering limits [MEASURE] & \code{vesc.yaml}'s servo clamp gives +0.31\,rad left and $-$0.26\,rad right (minimum turning radius about 1.0 / 1.2\,m); the simulator clamps at $\pm$0.4189\,rad (\code{TDD\_Gym}). Measure on the car; the simulator then takes the car's limits. \\
 \bottomrule
 \end{tabularx}
 
