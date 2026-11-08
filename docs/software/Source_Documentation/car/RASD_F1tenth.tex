@@ -190,6 +190,7 @@ FR-DRV-001 & The stack shall drive the motor and the servo through the VESC and 
 FR-DRV-002 & The stack shall read the joystick and turn it into drive commands while the operator holds the enable button. & V1 & S \\
 FR-DRV-003 & The stack shall publish the Pulsar SL450 scans and the Gemini 335L colour images, camera info and IMU through \code{orbbec\_camera}. & V1 & S \\
 FR-DRV-004 & The stack shall publish the mounting transforms from \code{base\_link} to the LiDAR and to the camera, from measured values. & V1 & C \\
+FR-DRV-005 & The camera shall be calibrated with a written, repeatable procedure: check the factory intrinsics and measure the camera-to-floor transform with a target on the floor. & V1 & D \\
 \bottomrule
 \end{tabularx}
 
@@ -224,11 +225,12 @@ FR-LIN-002 & The stack shall publish the track centre as a \code{nav\_msgs/Path}
 FR-PTH-001 & A PID controller shall drive the car on the lateral (and heading) error between the car's pose and a path. Form \tbd[OI-05]. & V1 & S \\
 FR-PTH-002 & The path shall be a \code{nav\_msgs/Path} on one topic, in any frame: drawn by the user (map), from line detection (car frame), or the racing line of option A (map). & V1 & S \\
 FR-PTH-003 & The pose shall be read from TF in the path's frame. A path in the car frame shall need no map pose. & V1 & S \\
-FR-PTH-004 & The controller shall publish \code{/drive}. Any node with the same inputs (path, pose) and output shall be able to replace it, for example Pure Pursuit. & V1 & S \\
-FR-PTH-005 & Offline paths (hand-drawn, racing line) shall be computed once, saved to a file and published once as a closed loop (latched). Open paths \tbd[OI-04]. & V1 & S \\
+FR-PTH-004 & The controller shall publish \code{/drive}. Any node with the same inputs (path, pose) and output shall be able to replace it. The stack shall provide Pure Pursuit beside the PID, with the same inputs and output. & V1 & S, D \\
+FR-PTH-005 & Offline paths (hand-drawn, racing line) shall be computed once, saved to a file and published once as a closed loop (latched). Open paths are not supported (OI-04). & V1 & S, D \\
 FR-PTH-006 & On a full loop the controller shall search the closest point only in a window after the last one it used; on a fragment it shall search all of it. & V1 & S \\
 FR-PTH-007 & If an online path stops updating (the camera loses the tape), the controller shall stop the car. A latched offline path is never stale. & V1 & S \\
 FR-PTH-008 & The stack shall provide a path drawn in the map. Source \tbd[OI-03]: teach and repeat suggested for V1, tape mapping later. & V1 & S \\
+FR-PTH-009 & The controller shall publish its lateral error, heading error and look-ahead point, and its gains shall be tunable while it runs. & V1 & D \\
 \bottomrule
 \end{tabularx}
 
@@ -429,19 +431,18 @@ Decisions and checks the requirements leave open, folded from the scope with the
 OI-01 & [DECIDE] Advanced topic: option A (racing line) or B (hybrid localization). \textbf{Held} until the base platform runs (21 Oct 2026). & Both need the tape lines in map coordinates (OI-03). A also needs the vehicle parameters (friction, CoG height), the TUM optimizer, a controller that holds at speed and a localization that keeps up; easy to prove (lap times, line crossings), but the gain is small in a small room. B needs an EKF, a camera correction that observes only the lateral offset and heading to the tape, and handling of sensor failures; harder to prove on the car (needs a ground truth) and overlaps exercise 5. & FR-ADV \\
 OI-02 & [DECIDE] Frame of the line-detection path: \code{base\_link} or \code{odom}. & Suggested: \code{odom}, transformed at the image time stamp. It compensates the camera latency, keeps a fragment valid between frames, and turns the stale-path rule into ``keep going on the last path for a short distance, then stop''. Alternative: \code{base\_link}, with the PID looking up the transform at the image time. The path-following contract (any frame) does not change. & FR-LIN-002 \\
 OI-03 & [DECIDE] Where the path drawn in the map comes from. The tape is not in the LiDAR map, so the path cannot be drawn by hand inside it. & Suggested for the base platform: teach and repeat: drive the camera follower (1b) slowly with AMCL running, record the poses in the map, smooth them, save them as the path. Later, for A or B: tape mapping, projecting the detected tape into the map to build the two boundary lines. & FR-PTH-008 \\
-OI-04 & [DECIDE] Open paths. Exercise 1a starts from a straight line, but offline paths are published as closed loops. & Add an open-path mode: the PID stops the car at the end of the path. & FR-PTH-005 \\
 OI-05 & [DECIDE] Form of the PID. A PID on the lateral error alone oscillates as speed rises. & Lateral and heading error with a look-ahead point (Stanley-like); Pure Pursuit as the drop-in for higher speed. & FR-PTH-001 \\
 OI-06 & [DECIDE] Line detection method. & (a) Image space: colour threshold, bird's-eye view, sliding windows, polynomial fit (the classic exercise 2). (b) Floor points: segment the tape, project the pixels onto the floor, fit and track the lines in \code{odom} (also feeds tape mapping, OI-03). (c) A learned segmentation, only if thresholds fail on the real floor; it can run on the Orin's GPU (C-024). Hard cases for all: hairpins with three or four lines in view, one line in view, glare. First data: phone video of the real tape. & FR-LIN-001 \\
 OI-07 & [DECIDE] Localization node. & \code{nav2\_amcl} (named by the scope; in the image with DEC-02 of the TDD), \code{slam\_toolbox} in localization mode, or MIT \code{particle\_filter} if AMCL is too slow at speed. Risks: a symmetric rectangular room (always give the initial pose), people around the track, furniture moved after mapping. & FR-LOC-001 \\
 OI-08 & [DECIDE] EKF for \code{odom} (wheel odometry and the camera IMU, \code{robot\_localization}) in the base platform. & Suggested: yes. It helps exercise 1a and both options, and is the first half of exercise 5. & FR-LOC-003 \\
 OI-09 & [VERIFY] Safety with \code{ackermann\_mux} locks. & Emergency stop: a latched lock above the joystick. Autonomy deadman: a lock with a timeout between \code{/drive} and the joystick, released while RB is held (today RB's \code{autonomous\_control} publishes to \code{/dev/null}, so the autonomy is not gated). AEB: an input between \code{/drive} and the joystick that brakes under a time-to-collision threshold, so a person can still drive the car away. Timeout: on a silent input the mux could hand over to a zero-speed input, so the car stops at once rather than after the VESC timeout (NFR-PER-005). Check how locks behave in this mux. & FR-SAF-002, 003 \\
 OI-11 & [DECIDE] Off-track report from the stack's own estimate (optional). On the car, leaving the lines is judged by the people watching; there is no external tracking. & A node that compares the car's footprint at the stack's pose (map or odom) with the tape lines (tape map or detected lines) and reports when it believes the car is off the track. It only reports, never stops the car, and shows what the stack believes, not the truth. & FR-OFF-001 \\
-OI-12 & [DECIDE] Exercises in the simulator: reference or required. & Suggested (user, 21 Oct 2026): reference only, not required in the simulator or the base platform; the simulator covers what the base platform's acceptance needs. An optional checkerboard on the simulated floor, to practise camera calibration (exercise 2), is listed in \code{TDD\_Gym}. & \cref{sec:exercises} \\
+OI-12 & [DECIDE] Exercises in the simulator: reference or required. & Suggested (user, 21 Oct 2026): reference only, not required in the simulator or the base platform; the simulator covers what the base platform's acceptance needs. & \cref{sec:exercises} \\
 \bottomrule
 \end{tabularx}
 \end{small}
 
-Decided: OI-10 (one image rebuild with \code{nav2\_amcl}, \code{robot\_localization}, \code{image\_transport\_plugins}, \code{cv\_bridge}; 22 Oct 2026) and OI-13 (Jazzy, C-020; 21 Oct 2026).
+Decided: OI-04 (no open-path mode: offline paths are closed loops only; 8 Nov 2026), OI-10 (one image rebuild with \code{nav2\_amcl}, \code{robot\_localization}, \code{image\_transport\_plugins}, \code{cv\_bridge}; 22 Oct 2026) and OI-13 (Jazzy, C-020; 21 Oct 2026).
 
 % ============================================================================
 \section{Glossary and References}

@@ -98,7 +98,7 @@ The seam sits below the mux, at \code{/ackermann\_cmd}, the topic the VESC reads
 AMCL & Pose in the room map (FR-LOC) & \code{/scan}, \code{/odom}, \code{/map} \arrowto\ TF \code{map}\arrowto\code{odom} \\
 EKF (\code{robot\_localization}) & Fused \code{odom} \tbd[OI-08] & \code{/odom}, IMU \arrowto\ TF \code{odom}\arrowto\code{base\_link} \\
 \code{polimi\_lines} & Line detection (FR-LIN) & camera image, info \arrowto\ \code{nav\_msgs/Path} \\
-\code{polimi\_control} & PID, Pure Pursuit (FR-PTH) & path, TF \arrowto\ \code{/drive} \\
+\code{polimi\_control} & PID and Pure Pursuit, same interface (FR-PTH) & path, TF \arrowto\ \code{/drive}, tracking errors \\
 \multicolumn{3}{@{}l}{\textit{Common}} \\
 \code{ackermann\_mux} & Pick the highest-priority input still sending; locks (FR-SAF) & \code{/teleop}, \code{/drive}, \code{/joy} \arrowto\ \code{/ackermann\_cmd} \\
 \code{polimi\_safety} & AEB (FR-SAF-004) & \code{/scan}, \code{/odom} \arrowto\ mux input \\
@@ -290,6 +290,8 @@ TF \code{base\_link}\arrowto\code{laser}, \code{camera\_link} & static TF & \cod
   \item \textbf{Input path:} \code{nav\_msgs/Path} on one topic, any frame; offline paths latched, online paths recomputed per camera frame (FR-PTH-002, 005).
   \item \textbf{Input pose:} TF lookup from the path's frame to \code{base\_link} (FR-PTH-003).
   \item \textbf{Output:} \code{/drive}. A stale online path stops the car (FR-PTH-007).
+  \item \textbf{Controllers:} the PID and Pure Pursuit, interchangeable (FR-PTH-004). Paths are closed loops only (FR-PTH-005).
+  \item \textbf{Tuning:} each controller publishes its lateral error, heading error and look-ahead point as topics for plotting; every gain is a live parameter (FR-PTH-009).
 \end{itemize}
 
 % ============================================================================
@@ -314,11 +316,12 @@ TF \code{base\_link}\arrowto\code{laser}, \code{camera\_link} & static TF & \cod
 \code{FR-DRV-002} & \code{joy}, \code{joy\_teleop} & bench: \code{/teleop} only while the enable button is held \\
 \code{FR-DRV-003} & \code{orbbec\_camera} & bench: rates of \code{/scan}, image, IMU \\
 \code{FR-DRV-004} & \code{car.launch.py} (DEC-09) & \code{tf2\_echo base\_link laser} matches \code{laser\_mount.yaml} \\
+\code{FR-DRV-005} & calibration runbook in \code{docs/software/} & the procedure run on the car; its result in \code{camera\_mount.yaml} \\
 \code{FR-MAP-001}, \code{002} & \code{slam\_toolbox} & AC-V1-01 \\
 \code{FR-LOC-001}, \code{002} & AMCL (default, OI-07) & AC-V1-01 \\
 \code{FR-LOC-003} & EKF (DEC-10) & \tbd[OI-08] \\
 \code{FR-LIN-001}, \code{002} & \code{polimi\_lines} & recorded camera data; AC-V1-02 \\
-\code{FR-PTH-001} to \code{008} & \code{polimi\_control} & unit tests on the error and window search; AC-V1-02, 03 \\
+\code{FR-PTH-001} to \code{009} & \code{polimi\_control} & unit tests on the error and window search; error topics while driving; AC-V1-02, 03 \\
 \code{FR-SAF-001} to \code{005} & \code{ackermann\_mux}, \code{mux.yaml}, \code{polimi\_safety} & AC-V1-04, in the simulator first \\
 \code{FR-SIM-001} to \code{003} & car interface, \code{hw:=sim} & \code{ros2 topic info} on both sides; AC-V1-02 \\
 \code{FR-DOC-001} & runbooks, RASD, TDD & review by someone outside the team \\
@@ -363,8 +366,8 @@ Python & system Python of the image; \code{uv} on the host & house rule \\
   \item \textbf{Jazzy migration} (\cref{sec:migration}): Jazzy images, the JAX gym, the simulator fork as a submodule.
   \item \textbf{\code{polimi\_bringup}:} the car interface README, \code{stack.launch.py}, \code{sim.launch.py}, \code{common.launch.py}, our \code{mux.yaml}; \code{simcar} calls \code{hw:=sim}; with DEC-08 the mux leaves the simulator fork.
   \item \textbf{Safety:} OI-09 locks and AEB, with the \code{/joy} stand-in (T-01), tested in the simulator.
-  \item \textbf{Logic:} mapping and localization, line detection, path following, as the base platform needs.
-  \item \textbf{Car bringup}, when the car is built: \code{car.launch.py}, udev rules, measured configs, safety tests on the car.
+  \item \textbf{Logic:} mapping and localization, line detection, path following (PID and Pure Pursuit, error topics), as the base platform needs.
+  \item \textbf{Car bringup}, when the car is built: \code{car.launch.py}, udev rules, measured configs, the camera calibration procedure, safety tests on the car.
   \item \textbf{Advanced topic} \target{V2}, once OI-01 is decided.
 \end{enumerate}
 
@@ -419,7 +422,7 @@ T-02 & Camera and IMU topic names [VERIFY] & From \code{orbbec\_camera}'s Gemini
 T-03 & LiDAR frame name [VERIFY] & From \code{orbbec\_camera}'s \code{lidar.launch.py}; set it to \code{laser} in \code{car.launch.py} if it differs. \\
 T-04 & Confirm DEC-03 to DEC-10 & DEC-08 is decided to follow the Jazzy migration (8 Nov 2026). The others are still Proposed; with DEC-06, \code{RASD\_F1tenth} C-022 is reworded. \\
 T-05 & Wheelbase & \code{vesc.yaml} has 0.25\,m, the simulated odometry the gym's 0.3302\,m. Measure the car and align both. \\
-T-06 & Mount measurements [MEASURE] & \code{laser\_mount.yaml} holds f1tenth's defaults; the camera mount file does not exist yet. \\
+T-06 & Mount measurements [MEASURE] & \code{laser\_mount.yaml} holds f1tenth's defaults; the camera mount comes from the calibration procedure (FR-DRV-005). \\
 T-07 & VESC device & udev rule on the Jetson for \code{/dev/sensors/vesc}, expected by \code{vesc.yaml}. \\
 T-08 & \code{orbbec\_camera} version & 2.9.3 is in the Jazzy apt repo; check it with the SL450's firmware at car bringup. \\
 T-09 & Unmatched remap & Today's bringup remaps \code{ackermann\_cmd\_out}\arrowto\code{ackermann\_drive}, which matches nothing: the mux publishes \code{ackermann\_cmd}. Gone with DEC-06. \\

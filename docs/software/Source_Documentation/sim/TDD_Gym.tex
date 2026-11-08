@@ -196,6 +196,7 @@ The generator (\code{ros2 run polimi\_sim make\_world <source>}) writes, into \c
 \code{room\_lidar.png}, \code{.yaml} & LiDAR slice at laser height: a table is four legs. Read by \code{lidar\_model}. \\
 \code{scene.yaml} & Exact geometry and colours for the camera, floor included, in \code{sim\_world}. \\
 \code{tape.yaml} & The tape as polygons and centre polylines: truth for the monitor and the markers. \\
+\code{centerline.csv} & Centre line with the widths to each side (TUM convention), for practising planning on the simulated track. Named without the map's stem on purpose, so the bridge doesn't count laps itself (S-09). \\
 \bottomrule
 \end{tabularx}
 
@@ -420,7 +421,6 @@ S-04 & Real room and track [DECIDE] & Layout, tape, floor and room; \code{demo\_
 S-05 & Migration & The Jazzy migration in \code{TDD\_F1tenth} comes first: the camera, IMU and room worlds are built on the JAX gym and the fork. The mux leaves with DEC-09. \\
 S-06 & Camera profile [VERIFY] & Whether the 335L gives 1280\x720 at 60\,fps in YUYV; if not, \code{720p60} is removed and everything stays on \code{720p30}. \\
 S-07 & Camera mount [DECIDE] & Height, pitch and position, chosen with \code{render\_frame --footprint} before the bracket is designed, then measured. \\
-S-08 & Calibration target (optional) & A checkerboard on the simulated floor to practise camera calibration (exercise 2); the exercises are reference only (\code{RASD\_F1tenth} OI-12). \\
 S-09 & Laps [DECIDE] & Keep \code{track\_monitor}'s laps (ordered checkpoints, valid flag) or use the \code{dev-jazzy} bridge's \code{lap\_count} and \code{lap\_time}. \\
 S-10 & Camera imperfections (optional) & Deferred: noise, blur, YUYV colour, latency, drops, body pitch, IR and depth are added only when a real-versus-simulated comparison shows the stack needs one. \\
 S-11 & Contacts on the JAX gym [VERIFY] & How \code{/ego\_racecar/collision} reports a contact (one edge per contact or every step), for the truth-jump detector. \\
