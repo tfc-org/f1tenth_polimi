@@ -99,7 +99,7 @@ f1tenth\_gym & Physics: single-track model, collisions, ray caster & Python API 
 \bottomrule
 \end{tabularx}
 
-\begin{tabularx}{\textwidth}{@{}L{3.2cm} L{4.6cm} Y@{}}
+\begin{tabularx}{\textwidth}{@{}L{4.0cm} L{4.2cm} Y@{}}
 \toprule
 \hd{Planned component} & \hd{Responsibility} & \hd{Interfaces} \\
 \midrule
@@ -156,7 +156,7 @@ DEC-16 & The simulator's design lives in this document \dec & One source of trut
 \subsection{Configuration files}
 All under \code{ros2\_ws/config/}, bind-mounted: no rebuild. At launch the map, laser, mount and gym files are merged into the config the gym gets, written to \code{/tmp/polimi\_sim/gym\_<map>\_<lidar>.yaml}.
 
-\begin{tabularx}{\textwidth}{@{}L{3.6cm} Y L{3.0cm}@{}}
+\begin{tabularx}{\textwidth}{@{}L{4.4cm} Y L{3.0cm}@{}}
 \toprule
 \hd{File} & \hd{Holds} & \hd{Chosen with} \\
 \midrule
@@ -164,9 +164,9 @@ All under \code{ros2\_ws/config/}, bind-mounted: no rebuild. At launch the map, 
 \code{maps/<map>.yaml} & \code{map\_path}, start pose \code{sx}, \code{sy}, \code{stheta}; any other \code{gym\_bridge} parameter overrides \code{sim/gym.yaml}. For a generated world also a \code{world:} block (paths of the generated files) and the source hash \planned & \code{simcar <map>} \\
 \code{lidar/<lidar>.yaml} & The laser: rate, FOV, resolution, ranges, effects & \code{lidar:=<lidar>} (default \code{sl450}) \\
 \code{car/laser\_mount.yaml} & \code{base\_link}\arrowto\code{laser}: x 0.27, y 0, z 0.11\,m, yaw 0, roll 0 [MEASURE]; read by the car too (\code{TDD\_F1tenth} DEC-09) & -- \\
-\code{car/body.yaml} \planned & What the gym's vehicle parameters lack: track width 0.281\,m, steering limits left 0.3135 and right 0.2634\,rad, ground clearance 0.021\,m, roof height, tyre width and contact length [MEASURE] & -- \\
-\code{car/camera\_mount.yaml} \planned & \code{base\_link}\arrowto\code{camera\_link} (x, y, z, roll, pitch, yaw) and the car's nose mask in the image; read by the car too & \code{camera\_mount:=} \\
-\code{camera/gemini\_335l.yaml} \planned & Profile presets (\code{720p30} default, \code{720p60}), intrinsics and distortion, IMU rate, range, offset and noise [VERIFY] & \code{camera\_profile:=} \\
+\code{car/body.yaml} & \planned\ What the gym's vehicle parameters lack: track width 0.281\,m, steering limits left 0.3135 and right 0.2634\,rad, ground clearance 0.021\,m, roof height, tyre width and contact length [MEASURE] & -- \\
+\code{car/camera\_mount.yaml} & \planned\ \code{base\_link}\arrowto\code{camera\_link} (x, y, z, roll, pitch, yaw) and the car's nose mask in the image; read by the car too & \code{camera\_mount:=} \\
+\code{camera/gemini\_335l.yaml} & \planned\ Profile presets (\code{720p30} default, \code{720p60}), intrinsics and distortion, IMU rate, range, offset and noise [VERIFY] & \code{camera\_profile:=} \\
 \code{sim/gym.yaml} & Everything else: topics, vehicle preset, opponents; \code{truth\_frame: sim\_world} \planned & -- \\
 \bottomrule
 \end{tabularx}
@@ -226,7 +226,7 @@ First guesses from datasheets and upstream defaults. \code{actuation\_model}, \c
 \code{reflectivity\_range\_max} & 15\,m & Low-reflectivity limit \\
 \code{mixed\_pixel\_prob}, \code{mixed\_pixel\_jump} & 0.3, 0.3\,m & Mixed pixels at range jumps \\
 \code{seed} & 0 & 0 = different every run \\
-\code{lidar\_map} \planned & world's \code{room\_lidar} & The LiDAR slice map, in place of the gym's \\
+\code{lidar\_map} & world's \code{room\_lidar} & \planned\ The LiDAR slice map, in place of the gym's \\
 \bottomrule
 \end{tabularx}
 Each effect is off at 0.0. Cost: 0.1\,ms per scan on the Mac, against a 5\,ms budget.
@@ -296,7 +296,7 @@ Keyboard and Foxglove teleop speak \code{Twist}, the mux speaks Ackermann. \code
 \code{actuation\_model} & \code{command\_delay}, \code{servo\_delay}, \code{steer\_offset}: 0.0; \code{servo\_rate}, \code{accel\_max}, \code{brake\_max}: 1000.0 (the gym's own limits remain) \\
 \code{odom\_model} & \code{speed\_scale\_error}, \code{speed\_noise\_std}, \code{speed\_deadband}: 0.0 \\
 \code{debug\_map\_to\_odom} & \code{truth}, unless set on the command line \\
-\code{imu\_model} \planned & noise and bias 0.0 \\
+\code{imu\_model} & \planned\ noise and bias 0.0 \\
 \bottomrule
 \end{tabularx}
 
@@ -319,7 +319,7 @@ IMU & none & \planned\ planar motion, lever arm, noise and bias & Gemini 335L IM
 Command path & \code{/drive} straight into physics, held forever & \code{/drive} \arrowto\ \code{ackermann\_mux} \arrowto\ \code{actuation\_model} & mux \arrowto\ VESC \\
 Actuation & ideal & command delay, VESC timeout, servo delay and rate, accel and brake limits & VESC, servo \\
 Odometry & truth in \code{map} & speed scale error and noise, yaw rate from the commanded steering; drifts & \code{vesc\_to\_odom} \\
-Frames & \code{map}\arrowto\code{ego\_racecar/base\_link}\arrowto\code{ego\_racecar/laser} & \code{odom}\arrowto\code{base\_link}\arrowto\code{laser}, truth tree apart (under \code{sim\_world}, \planned) & \code{odom}\arrowto\code{base\_link}\arrowto\code{laser} \\
+Frames & \code{map}\arrowto\allowbreak\code{ego\_racecar/base\_link}\arrowto\allowbreak\code{ego\_racecar/laser} & \code{odom}\arrowto\allowbreak\code{base\_link}\arrowto\allowbreak\code{laser}, truth tree apart (under \code{sim\_world}, \planned) & \code{odom}\arrowto\allowbreak\code{base\_link}\arrowto\allowbreak\code{laser} \\
 Teleop & \code{/cmd\_vel} into physics & \code{/cmd\_vel} \arrowto\ \code{teleop\_bridge} \arrowto\ \code{/teleop} \arrowto\ mux & joystick \arrowto\ \code{/teleop} \arrowto\ mux \\
 Leaving the track & a wall collision & \planned\ nothing physical; scored by \code{track\_monitor} & nothing physical; judged by people \\
 \bottomrule
@@ -335,18 +335,18 @@ The stack may use \code{/scan}, \code{/odom}, the camera and IMU topics, TF \cod
 \endhead
 \code{/scan} & \code{LaserScan}, frame \code{laser}, 40\,Hz & out, \code{lidar\_model} \\
 \code{/odom} & \code{Odometry}, frame \code{odom}, 50\,Hz & out, \code{odom\_model} \\
-\code{/camera/color/image\_raw}, \code{camera\_info} \planned & \code{Image} \code{rgb8}, \code{CameraInfo}; 30 or 60\,Hz & out, \code{camera\_model} \\
-\code{/camera/color/image\_raw/compressed} \planned & \code{CompressedImage}, preview & out, only while subscribed \\
-\code{/camera/gyro\_accel/sample} \planned & \code{Imu}, 200\,Hz & out, \code{imu\_model} \\
+\code{/camera/color/image\_raw}, \code{camera\_info} & \planned\ \code{Image} \code{rgb8}, \code{CameraInfo}; 30 or 60\,Hz & out, \code{camera\_model} \\
+\code{/camera/color/}\allowbreak\code{image\_raw/compressed} & \planned\ \code{CompressedImage}, preview & out, only while subscribed \\
+\code{/camera/}\allowbreak\code{gyro\_accel/sample} & \planned\ \code{Imu}, 200\,Hz & out, \code{imu\_model} \\
 \code{/drive} & \code{AckermannDriveStamped} & in, autonomy, mux priority 10 \\
 \code{/teleop} & \code{AckermannDriveStamped} & in, mux priority 100, from \code{teleop\_bridge} \\
 \code{/cmd\_vel} & \code{Twist} & in, teleop \\
 \code{/initialpose} & \code{PoseWithCovarianceStamped} & in, today the reset of the true pose; \planned\ AMCL's, as on the car \\
 \code{/map} & \code{OccupancyGrid} & out today; \planned\ SLAM's and AMCL's, as on the car \\
-\code{/sim/map}, \code{/sim/initialpose} \planned & the gym's map and reset input & truth and simulator control \\
-\code{/sim/reset}, \code{/sim/reset\_pose}, \code{/sim/reset\_at} \planned & \code{Empty}, \code{PoseStamped} (rear axle), \code{Float64} (arc length) & in, \code{sim\_reset}, for people and scripts \\
-\code{/sim/truth/tape}, \code{/sim/truth/camera/color/label} \planned & \code{MarkerArray}, \code{Image} \code{mono8} & out, evaluation only \\
-\code{/sim/eval/*}, \code{/sim/eval/loc/*}, \code{/sim/health/*} \planned & \code{std\_msgs} values & out, evaluation only \\
+\code{/sim/map}, \code{/sim/initialpose} & \planned\ the gym's map and reset input & truth and simulator control \\
+\code{/sim/reset}, \code{/sim/reset\_pose}, \code{/sim/reset\_at} & \planned\ \code{Empty}, \code{PoseStamped} (rear axle), \code{Float64} (arc length) & in, \code{sim\_reset}, for people and scripts \\
+\code{/sim/truth/tape}, \code{/sim/truth/}\allowbreak\code{camera/color/label} & \planned\ \code{MarkerArray}, \code{Image} \code{mono8} & out, evaluation only \\
+\code{/sim/eval/*}, \code{/sim/eval/loc/*}, \code{/sim/health/*} & \planned\ \code{std\_msgs} values & out, evaluation only \\
 \code{/ego\_racecar/odom} & \code{Odometry}, truth & out, evaluation only \\
 \code{/ego\_racecar/collision} & \code{Bool} & out, evaluation only \\
 \code{/ackermann\_cmd}, \code{/sim/drive}, \code{/sim/steering\_command}, \code{/sim/scan\_unused} & internal & -- \\
