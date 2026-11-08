@@ -144,7 +144,7 @@ Each topic in the middle column is part of the car interface. The car and the si
       4.4/{\code{orbbec\_camera} LiDAR}/{\code{/scan}, frame \code{laser}}/{LiDAR model},
       3.3/{\code{vesc\_to\_odom}}/{\code{/odom}, TF \code{odom}\arrowto\code{base\_link}}/{odometry model},
       2.2/{\code{orbbec\_camera} Gemini}/{camera image, info}/{camera model},
-      1.1/{\code{orbbec\_camera} Gemini}/{IMU}/{IMU model},
+      1.1/{\code{orbbec\_camera} Gemini}/{IMU}/{IMU model (later)},
       0.0/{\code{car.launch.py}}/{static TF mounts}/{\code{polimi\_sim}}} {
     \node[ext, minimum width=3.2cm, minimum height=0.8cm] (c\i) at (0,\y) {\c};
     \node[data, minimum width=3.6cm, minimum height=0.8cm] (t\i) at (6,\y) {\t};
@@ -278,7 +278,7 @@ Only \code{/ackermann\_cmd} goes from the stack to the hardware; every other row
 \code{/odom} & \code{Odometry} & \code{vesc\_to\_odom} & odometry model \\
 TF \code{odom}\arrowto\code{base\_link} & TF & \code{vesc\_to\_odom} & odometry model \\
 camera image, info & \code{Image}, \code{CameraInfo} & \code{orbbec\_camera} & camera model (\code{TDD\_Gym}) \\
-IMU & \code{Imu} & \code{orbbec\_camera} & IMU model (\code{TDD\_Gym}) \\
+IMU & \code{Imu} & \code{orbbec\_camera} & IMU model (\code{TDD\_Gym}, deferred until OI-08) \\
 TF \code{base\_link}\arrowto\code{laser}, \code{camera\_link} & static TF & \code{car.launch.py} & \code{polimi\_sim} \\
 \bottomrule
 \end{tabularx}
