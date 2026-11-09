@@ -1,6 +1,6 @@
 # Simulator
 
-How to run the simulator: f1tenth_gym + f1tenth_gym_ros for the physics, plus our `polimi_sim` model nodes, in the `arm` / `x86` containers. How it is built (graph, models and their parameters, sim vs car, ideal mode, known limits) is in `TDD_Gym` (`docs/software/PDF_Documentation/sim/`).
+How to run the simulator: f1tenth_gym (`dev-jax`, JAX on the CPU) and f1tenth_gym_ros for the physics, plus our `polimi_sim` model nodes, in the `arm` / `x86` containers. Both packages are in our fork `tfc-org/f1tenth_gym_polimi`, the submodule `ros2_ws/src/f1tenth_gym_ros`; what `polimi_sim` is and how its config overlay works is in its `README.md` there. How it is built (graph, models and their parameters, sim vs car, ideal mode, known limits) is in `TDD_Gym` (`docs/software/PDF_Documentation/sim/`).
 
 ## Run
 
@@ -26,13 +26,13 @@ docker compose exec arm bash -c "source /etc/bashrc_polimi && simcar levine idea
 ```
 
 - From the host, the same in one line each: `bash scripts/sim/start.real.sh`, `start.ideal.sh`, `start.teleop.sh`, `reset.sh`, `stop.sh` (see [scripts/sim](../../scripts/sim/README.md)).
-- `simcar [map] [launch args]` is a shell function from `docker/ros/bashrc_polimi`. `map` is a file name in `ros2_ws/config/maps/`. The rest goes to `ros2 launch polimi_sim sim_car.launch.py`.
+- `simcar [map] [launch args]` is a shell function from `docker/ros/bashrc_polimi`. `map` is a file name in `maps/` (ours or the defaults, below). It passes `config_dir:=~/ws/config`; the rest goes to `ros2 launch polimi_sim sim_car.launch.py`.
 - The car only moves when commanded (teleop or `/drive`).
 - Stop: `Ctrl-C`.
 
 ## Configs
 
-Under `ros2_ws/config/`, bind-mounted: no rebuild. They are chosen independently and merged at launch (see `TDD_Gym`).
+Each file comes from `ros2_ws/config/` (our car's measured files, bind-mounted: no rebuild) if it is there, otherwise from polimi_sim's labelled defaults in `ros2_ws/src/f1tenth_gym_ros/polimi_sim/config/defaults/` (stock f1tenth and datasheet values). The launch logs where each one came from, and warns for each file we don't have. Today `ros2_ws/config/` holds `car/laser_mount.yaml` and `lidar/sl450.yaml`; everything else is a default. The files are chosen independently and merged at launch (see `TDD_Gym`).
 
 | File | Holds | Chosen with |
 |---|---|---|
@@ -40,15 +40,17 @@ Under `ros2_ws/config/`, bind-mounted: no rebuild. They are chosen independently
 | `lidar/<lidar>.yaml` | The laser: rate, FOV, resolution, ranges, effects | `lidar:=<lidar>` (default `sl450`) |
 | `car/laser_mount.yaml` | `base_link → laser`: `x 0.27, y 0.0, z 0.11, yaw 0.0, roll 0.0` **[MEASURE]** | – |
 | `sim/gym.yaml` | Everything else the gym needs: topics, vehicle preset, opponents | – |
+| `actuation_model.yaml`, `odom_model.yaml`, `teleop_bridge.yaml` | The other models | – |
 
 - Maps: `spielberg` (default; Red Bull Ring, a closed track about 2.2 m wide), `levine` (a corridor loop, start at (-12, 0)).
-- New map: a file with those four keys. `map_path` is absolute or relative to f1tenth_gym_ros's share directory (bundled: `maps/levine`, `maps/levine_obs`, `maps/levine_blocked`, `maps/blank`, `maps/Spielberg`). Any other `gym_bridge` parameter put there overrides `sim/gym.yaml`.
-- New laser: copy `lidar/sl450.yaml`, then `simcar spielberg lidar:=<name>`.
-- `sim/gym.yaml` is f1tenth_gym_ros's `config/sim.yaml` at the pinned commit, minus the keys above. Re-copy it when `GYM_ROS_REF` in the Dockerfile is bumped; its header lists what differs.
+- Start poses `sx`, `sy`, `stheta` are the rear axle (`base_link` on the car).
+- New map: a file with those four keys in `ros2_ws/config/maps/`. `map_path` is absolute or relative to f1tenth_gym_ros's share directory (bundled: `maps/levine`, `maps/levine_obs`, `maps/levine_blocked`, `maps/blank`, `maps/Spielberg`). Any other `gym_bridge` parameter put there overrides `sim/gym.yaml`.
+- New laser: copy `lidar/sl450.yaml` into `ros2_ws/config/lidar/`, then `simcar spielberg lidar:=<name>`.
+- To override a default, copy it to the same path under `ros2_ws/config/` and edit it.
 
 ## Parameters
 
-Defaults and what each one means are in `TDD_Gym`. `actuation_model`, `odom_model` and `teleop_bridge` defaults are in `ros2_ws/src/polimi_sim/config/`; the laser's are in `ros2_ws/config/lidar/`. Edits apply on the next launch. Override a whole file with a launch argument:
+Defaults and what each one means are in `TDD_Gym`. The model files resolve like the configs above. Edits apply on the next launch. Override a whole file with a launch argument:
 
 ```bash
 docker compose exec arm bash -c "source /etc/bashrc_polimi && simcar levine odom_params:=/path/my_odom.yaml"
@@ -84,10 +86,7 @@ docker compose exec arm bash -c "source /etc/bashrc_polimi && ros2 param set /li
 
 - Browser: https://app.foxglove.dev (free account) or the desktop app.
 - **Open connection → Foxglove WebSocket →** `ws://localhost:8765`.
-- Ready-made layout, then **Layouts → Import from file**:
-  ```bash
-  docker cp f1tenth_polimi_arm:/opt/sim_ws/src/f1tenth_gym_ros/config/foxglove/gym_bridge_foxglove.json ~/Desktop/
-  ```
+- Ready-made layout: **Layouts → Import from file** → `ros2_ws/src/f1tenth_gym_ros/config/foxglove/gym_bridge_foxglove.json`.
   The layout predates `simcar`: its scan entry points at the gym's scan, so enable `/scan` by hand.
 
 ### Truth and estimate
@@ -150,7 +149,7 @@ The stack uses only `/scan`, `/odom`, TF `odom → base_link → laser`, and pub
 
 ```bash
 docker compose --profile gui up -d novnc          # on the host
-rviz2 -d /opt/sim_ws/src/f1tenth_gym_ros/config/rviz/gym_bridge.rviz   # in the container
+rviz2 -d ~/ws/src/f1tenth_gym_ros/config/rviz/gym_bridge.rviz   # in the container
 ```
 
 - View at http://localhost:8080.
@@ -161,7 +160,7 @@ rviz2 -d /opt/sim_ws/src/f1tenth_gym_ros/config/rviz/gym_bridge.rviz   # in the 
 The model logic is plain Python without ROS, unit-tested on synthetic data:
 
 ```bash
-docker compose exec arm bash -c "source /etc/bashrc_polimi && cd ~/ws/src/polimi_sim && python3 -m pytest test -q"
+docker compose exec arm bash -c "source /etc/bashrc_polimi && cd ~/ws/src/f1tenth_gym_ros/polimi_sim && python3 -m pytest test -q"
 ```
 
 ## The gym alone

@@ -70,9 +70,9 @@ What to do after a change, from cheapest to most expensive:
 | `docker/ros/bashrc_polimi` | open a new shell (`docker compose exec arm bash`). After a branch switch that replaces it (`/etc/bashrc_polimi: No such file or directory`): `docker compose restart arm` |
 | `docker/ros/python3-ros` (also after a branch switch that replaces it) | `docker compose restart arm` |
 | `docker-compose.yaml` | `docker compose up -d arm` (recreates, no rebuild) |
-| a `package.xml` dependency, `Dockerfile`, `GYM_REF` / `GYM_ROS_REF` | rebuild (below) |
+| a `package.xml` dependency, `Dockerfile`, `GYM_REF` | rebuild (below) |
 
-A `package.xml` needs a rebuild because rosdep runs at build time. Bump `GYM_REF` / `GYM_ROS_REF` on purpose, never follow the branch.
+A `package.xml` needs a rebuild because rosdep runs at build time. Bump `GYM_REF` on purpose, never follow the branch. The bridge is the submodule `ros2_ws/src/f1tenth_gym_ros`, built by `cb`: bumping its pointer needs no rebuild unless its `package.xml` changes.
 
 ### OpenCV and NumPy
 
@@ -89,6 +89,8 @@ python3 -c "import cv2, numpy; print(cv2.__file__, cv2.__version__, numpy.__file
 ```
 
 Both paths must be under `/usr/local/`. On the Jazzy images (9 Nov 2026): `cv2` 5.0.0, NumPy 2.5.4, both from `/usr/local/lib/python3.12/dist-packages`.
+
+Build arguments (`USER`, `UID`, `GID`, `WITH_SIM`, `GYM_REF`, `ROSDEP_SKIP`) are declared right before their first use: every `RUN` after an `ARG` misses the cache when its value changes, so keep them low in the file and the apt layer stays shared by every target and user. apt's packages and pip's wheels are kept in BuildKit cache mounts, so a rebuilt layer reuses what an earlier build downloaded; `docker builder prune` empties them.
 
 A rebuild reuses the cache up to the first changed step. If it downloads everything again, the cache was pruned (`docker builder prune`, or Docker Desktop's automatic cleanup) or the image predates a Dockerfile change: one slow build, then it's fast again.
 
