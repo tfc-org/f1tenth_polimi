@@ -46,8 +46,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Simulator: f1tenth_gym (Python) + f1tenth_gym_ros (ROS bridge) as an underlay.
-# After the apt layer on purpose: the gym's pip cv2 and NumPy must shadow apt's
-# (cv_bridge brings python3-opencv). Python nodes never import cv_bridge.
 # pip quirks copied from upstream gym_ros: a fresh pip is needed for the gym's
 # build backend. Pins, if ever needed, go in /tmp/pip-constraints.txt.
 RUN if [ "${WITH_SIM}" = "1" ]; then \
@@ -66,7 +64,6 @@ RUN if [ "${WITH_SIM}" = "1" ]; then \
     fi
 
 # Non-root user matching the host's UID/GID, so files in bind mounts stay yours.
-# The base image's own user (ubuntu, UID 1000) goes first, so any host UID works.
 # It also owns /opt/sim_ws: gym_bridge_launch.py writes a scaled map copy next to itself.
 RUN if id -u ubuntu >/dev/null 2>&1; then userdel -r ubuntu; fi \
     && (getent group ${GID} || groupadd -g ${GID} ${USER}) \

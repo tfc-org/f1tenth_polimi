@@ -1,4 +1,3 @@
-"""Messages and distinct poses per second on /ego_racecar/odom, over a fixed window."""
 import sys
 import time
 
