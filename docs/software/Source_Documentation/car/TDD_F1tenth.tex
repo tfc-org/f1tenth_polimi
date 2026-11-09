@@ -10,7 +10,7 @@
 \input{doc}
 \docbrand{polimi}
 
-\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The car: stack, car interface and deployment}{0.05}{F1tenth PoliMI team}
+\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The car: stack, car interface and deployment}{0.06}{F1tenth PoliMI team}
 \docclassification{Public}
 
 \newcommand{\prop}{\target{Proposed}}
@@ -22,6 +22,7 @@
 0.03 & 2026-11-09 & F1tenth PoliMI team & Controllers and tuning topics (PID and Pure Pursuit, FR-PTH-009); camera calibration procedure in the car bringup (FR-DRV-005, T-06); line detection on replayed camera bags; IMU model deferred until OI-08 \\
 0.04 & 2026-11-09 & F1tenth PoliMI team & Plan review: simulator camera and camera-on-the-bench steps before the logic; bag replay in the launch, with the stack on \code{use\_sim\_time}; an online path carries its image's stamp \\
 0.05 & 2026-11-09 & F1tenth PoliMI team & Plan review: bag replay follows the Jazzy migration \\
+0.06 & 2026-11-09 & F1tenth PoliMI team & Jazzy migration step 1 done: the images run on \code{ros:jazzy} with the DEC-02 packages and \code{f1tenth\_system} on \code{jazzy-polimi}; today-versus-target, deployment and repositories updated. Plan review: camera on the bench before the simulator camera, bench bags carry the stand's camera pose \\
 }
 
 % ============================================================================

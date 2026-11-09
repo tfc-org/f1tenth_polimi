@@ -9,7 +9,7 @@
 \input{doc}
 \docbrand{polimi}
 
-\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The simulator: gym, bridge and car models}{0.05}{F1tenth PoliMI team}
+\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The simulator: gym, bridge and car models}{0.06}{F1tenth PoliMI team}
 \docclassification{Public}
 
 \newcommand{\prop}{\target{Proposed}}
@@ -23,6 +23,7 @@
 0.03 & 2026-11-09 & F1tenth PoliMI team & Right-sized: IMU, localization monitor, camera and world extras deferred (S-12 to S-15), objects of one height, simpler off-track rule (DEC-14); camera sources \code{render} and \code{bag}, bag replay needs no gym and comes first; line detection scored on its path against the tape centre line \\
 0.04 & 2026-11-09 & F1tenth PoliMI team & Plan review: replayed images converted by their encoding with NumPy, never \code{cv\_bridge} in Python (\code{TDD\_F1tenth} DEC-02) \\
 0.05 & 2026-11-09 & F1tenth PoliMI team & Plan review: the Jazzy migration comes first, then bag replay; car bags are recorded and replayed on Jazzy \\
+0.06 & 2026-11-09 & F1tenth PoliMI team & The images run ROS~2 Jazzy (migration step 1); the camera's \code{bag} source is built in the fork after the migration. Plan review: bench bags carry the stand's camera pose as a static TF; the build order is kept in the \code{TDD\_F1tenth} plan \\
 }
 
 % ============================================================================
