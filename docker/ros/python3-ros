@@ -1,5 +1,5 @@
 #!/bin/bash
 # Python with the ROS environment, for IDE remote interpreters.
-source /opt/ros/humble/setup.bash
+source /opt/ros/$ROS_DISTRO/setup.bash
 [ -f "$HOME/ws/install/setup.bash" ] && source "$HOME/ws/install/setup.bash"
 exec /usr/bin/python3 "$@"

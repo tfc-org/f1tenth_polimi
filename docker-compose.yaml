@@ -34,7 +34,7 @@ x-common: &common
   tty: true
   # Starts the zenoh router in the background, then keeps the container alive.
   command: >
-    bash -c "source /opt/ros/humble/setup.bash &&
+    bash -c "source /opt/ros/$$ROS_DISTRO/setup.bash &&
     (ros2 run rmw_zenoh_cpp rmw_zenohd > /tmp/zenohd.log 2>&1 &) ;
     exec tail -f /dev/null"
   environment:
@@ -42,7 +42,6 @@ x-common: &common
     - DISPLAY=:1
     - LIBGL_ALWAYS_SOFTWARE=1
     - USER=${USER}
-    - ROS_LOCALHOST_ONLY=0
     - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-48}
     - RMW_IMPLEMENTATION=rmw_zenoh_cpp
     - RCUTILS_COLORIZED_OUTPUT=1
@@ -73,7 +72,7 @@ services:
         <<: *user-args
         WITH_SIM: "1"
     restart: unless-stopped
-    image: f1tenth_polimi:humble_arm
+    image: f1tenth_polimi:jazzy_arm
     container_name: f1tenth_polimi_arm
     <<: *common
     ports:
@@ -87,9 +86,9 @@ services:
       - ./docker/ros/python3-ros:/opt/ros-python/bin/python:ro   # IDE interpreter with the ROS environment
       - x11socket:/tmp/.X11-unix
       - ./docker/ros/bashrc_polimi:/etc/bashrc_polimi:ro   # live: edit, then open a new shell
-      - build_arm:/home/${USER}/ws/build
-      - install_arm:/home/${USER}/ws/install
-      - log_arm:/home/${USER}/ws/log
+      - build_jazzy_arm:/home/${USER}/ws/build
+      - install_jazzy_arm:/home/${USER}/ws/install
+      - log_jazzy_arm:/home/${USER}/ws/log
 
   # x86 Linux / Windows PC (development / simulation)
   x86:
@@ -99,7 +98,7 @@ services:
         <<: *user-args
         WITH_SIM: "1"
     restart: unless-stopped
-    image: f1tenth_polimi:humble_x86
+    image: f1tenth_polimi:jazzy_x86
     container_name: f1tenth_polimi_x86
     <<: *common
     ports:
@@ -112,19 +111,20 @@ services:
       - ./docker/ros/python3-ros:/opt/ros-python/bin/python:ro   # IDE interpreter with the ROS environment
       - x11socket:/tmp/.X11-unix
       - ./docker/ros/bashrc_polimi:/etc/bashrc_polimi:ro   # live: edit, then open a new shell
-      - build_x86:/home/${USER}/ws/build
-      - install_x86:/home/${USER}/ws/install
-      - log_x86:/home/${USER}/ws/log
+      - build_jazzy_x86:/home/${USER}/ws/build
+      - install_jazzy_x86:/home/${USER}/ws/install
+      - log_jazzy_x86:/home/${USER}/ws/log
 
-  # Jetson Orin Nano (JetPack 6 = Ubuntu 22.04) on the car. Plain ros:humble
-  # (arm64), no simulator. Nothing in the stack uses the GPU today.
+  # Jetson Orin Nano on the car: JetPack 7.2.1 host (Ubuntu 24.04), ros:jazzy
+  # container (arm64), no simulator. GPU through the NVIDIA Container Toolkit,
+  # set up at car bringup.
   jet:
     build:
       <<: *build
       args:
         <<: *user-args
         WITH_SIM: "0"
-    image: f1tenth_polimi:humble_jet
+    image: f1tenth_polimi:jazzy_jet
     container_name: f1tenth_polimi_jet
     <<: *common
     network_mode: host
@@ -137,18 +137,18 @@ services:
       - ./docker/ros/python3-ros:/opt/ros-python/bin/python:ro   # IDE interpreter with the ROS environment
       - x11socket:/tmp/.X11-unix
       - ./docker/ros/bashrc_polimi:/etc/bashrc_polimi:ro   # live: edit, then open a new shell
-      - build_jet:/home/${USER}/ws/build
-      - install_jet:/home/${USER}/ws/install
-      - log_jet:/home/${USER}/ws/log
+      - build_jazzy_jet:/home/${USER}/ws/build
+      - install_jazzy_jet:/home/${USER}/ws/install
+      - log_jazzy_jet:/home/${USER}/ws/log
 
 volumes:
   x11socket:
-  build_arm:
-  install_arm:
-  log_arm:
-  build_x86:
-  install_x86:
-  log_x86:
-  build_jet:
-  install_jet:
-  log_jet:
+  build_jazzy_arm:
+  install_jazzy_arm:
+  log_jazzy_arm:
+  build_jazzy_x86:
+  install_jazzy_x86:
+  log_jazzy_x86:
+  build_jazzy_jet:
+  install_jazzy_jet:
+  log_jazzy_jet:

@@ -32,7 +32,7 @@ f1tenth_polimi/
 │   └── software/         # Runbooks (.md), Source_Documentation/ (.tex), PDF_Documentation/
 ├── hardware/             # BOM, datasheets, CAD, electronics
 ├── docker/
-│   ├── ros/              # ROS image (ros:humble + deps + simulator)
+│   ├── ros/              # ROS image (ros:jazzy + deps + simulator)
 │   └── novnc/            # Optional browser display for RViz
 ├── docker-compose.yaml   # Services: arm, x86, jet, novnc
 ├── ros2_ws/

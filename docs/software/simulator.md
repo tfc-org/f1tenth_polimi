@@ -111,7 +111,7 @@ Teleop goes through the mux, exactly like the joystick on the car. Use the Foxgl
 
 ```bash
 docker compose exec arm bash \
-  -c "source /opt/ros/humble/setup.bash && ros2 run teleop_twist_keyboard teleop_twist_keyboard"
+  -c "source /etc/bashrc_polimi && ros2 run teleop_twist_keyboard teleop_twist_keyboard"
 ```
 
 - Teleop has priority 100, autonomy (`/drive`) 10. While teleop messages arrive, they win.
@@ -130,7 +130,7 @@ Stop the car first: a reset keeps the last speed. Then:
 Foxglove 3D panel → publish tool → **Pose estimate** → click and drag; or
 ```bash
 docker compose exec arm bash \
-  -c "source /opt/ros/humble/setup.bash && ros2 topic pub --once /initialpose geometry_msgs/msg/PoseWithCovarianceStamped '{header: {frame_id: map}, pose: {pose: {position: {x: -12.0, y: 0.0}, orientation: {w: 1.0}}}}'"
+  -c "source /etc/bashrc_polimi && ros2 topic pub --once /initialpose geometry_msgs/msg/PoseWithCovarianceStamped '{header: {frame_id: map}, pose: {pose: {position: {x: -12.0, y: 0.0}, orientation: {w: 1.0}}}}'"
 ```
 
 The command above is the `levine` start. For `spielberg` use `position: {x: 0.0, y: 0.0}, orientation: {z: 0.1296, w: 0.9916}`.
