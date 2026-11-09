@@ -35,6 +35,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ros-${ROS_DISTRO}-xacro \
         ros-${ROS_DISTRO}-robot-state-publisher \
         ros-${ROS_DISTRO}-slam-toolbox \
+        ros-${ROS_DISTRO}-nav2-amcl \
+        ros-${ROS_DISTRO}-robot-localization \
+        ros-${ROS_DISTRO}-image-transport-plugins \
+        ros-${ROS_DISTRO}-cv-bridge \
         ros-${ROS_DISTRO}-nav2-map-server \
         ros-${ROS_DISTRO}-nav2-lifecycle-manager \
         ros-${ROS_DISTRO}-foxglove-bridge \
@@ -42,6 +46,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Simulator: f1tenth_gym (Python) + f1tenth_gym_ros (ROS bridge) as an underlay.
+# After the apt layer on purpose: the gym's pip cv2 and NumPy must shadow apt's
+# (cv_bridge brings python3-opencv). Python nodes never import cv_bridge.
 # pip quirks copied from upstream gym_ros: a fresh pip is needed for the gym's
 # build backend. Pins, if ever needed, go in /tmp/pip-constraints.txt.
 RUN if [ "${WITH_SIM}" = "1" ]; then \
