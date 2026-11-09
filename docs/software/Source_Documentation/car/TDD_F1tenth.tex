@@ -394,7 +394,7 @@ Rollback: the Humble branches stay on the forks, so going back is a revert and a
 
 \subsection{Development Standards}
 \begin{itemize}
-  \item \textbf{Branches and reviews:} every change through a PR. Protected branches (\code{main}; the forks' \code{humble-*}, \code{jazzy-*}, \code{dev-humble*}, \code{dev-jazzy*}) block force pushes and deletion and need one approval.
+  \item \textbf{Branches and reviews:} every change through a PR. Protected branches (\code{main}; the forks' default branch and \code{jazzy-*} or \code{dev-jazzy*}) block force pushes and deletion and need one approval.
   \item \textbf{Submodules:} changing a fork takes a commit there, then a pointer commit here; \code{push.recurseSubmodules=check} blocks a pointer to an unpushed commit. \code{scripts/setup\_git.sh} sets this up and adds the \code{upstream} remotes.
   \item \textbf{Upstream sync:} merge upstream into our branch, never rewrite it; preview with \code{git log ours..upstream}.
   \item \textbf{Pins:} gym and bridge refs are bumped on purpose, never by following a branch (NFR-MNT-002).
