@@ -88,8 +88,8 @@ This page says who can read, push, review and merge in our three repos, and how 
 | Repo | What | Default branch | Upstream |
 |---|---|---|---|
 | `f1tenth_polimi` | This repo: docs, Docker, our packages | `main` | none |
-| `f1tenth_system_polimi` | Drivers, our fork (submodule in `ros2_ws/src/`) | `humble-polimi` | `f1tenth/f1tenth_system` |
-| `f1tenth_gym_polimi` | Simulator, our fork | `dev-humble-polimi` | `f1tenth/f1tenth_gym_ros` |
+| `f1tenth_system_polimi` | Drivers, our fork (submodule in `ros2_ws/src/`) | `jazzy-polimi` | `f1tenth/f1tenth_system` |
+| `f1tenth_gym_polimi` | Simulator, our fork (submodule in `ros2_ws/src/`) | `dev-jazzy-polimi` | `f1tenth/f1tenth_gym_ros` |
 
 The org is on the **Free** plan. Org-level rulesets need GitHub Team, so each repo has its own ruleset.
 
