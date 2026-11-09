@@ -1,7 +1,7 @@
 [submodule "ros2_ws/src/f1tenth_system"]
 	path = ros2_ws/src/f1tenth_system
 	url = https://github.com/tfc-org/f1tenth_system_polimi.git
-	branch = humble-polimi
+	branch = jazzy-polimi
 [submodule "docs/Latex_Templates"]
 	path = docs/Latex_Templates
 	url = https://github.com/tfc-org/Latex_Templates.git
