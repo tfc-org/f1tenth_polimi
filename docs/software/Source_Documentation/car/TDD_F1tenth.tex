@@ -366,7 +366,7 @@ Python & system Python of the image; \code{uv} on the host & house rule \\
   \item \textbf{Jazzy migration} (\cref{sec:migration}): Jazzy images, the JAX gym, the simulator fork as a submodule.
   \item \textbf{\code{polimi\_bringup}:} the car interface README, \code{stack.launch.py}, \code{sim.launch.py}, \code{common.launch.py}, our \code{mux.yaml}; \code{simcar} calls \code{hw:=sim}; with DEC-08 the mux leaves the simulator fork.
   \item \textbf{Safety:} OI-09 locks and AEB, with the \code{/joy} stand-in (T-01), tested in the simulator.
-  \item \textbf{Logic:} mapping and localization, line detection (first tuned offline on phone frames of the real tape, then on replayed bags, \code{TDD\_Gym}), path following (PID and Pure Pursuit, error topics), as the base platform needs.
+  \item \textbf{Logic:} mapping and localization, line detection (on replayed camera bags of the real tape, \code{TDD\_Gym}), path following (PID and Pure Pursuit, error topics), as the base platform needs.
   \item \textbf{Car bringup}, when the car is built: \code{car.launch.py}, udev rules, measured configs, the camera calibration procedure, safety tests on the car.
   \item \textbf{Advanced topic} \target{V2}, once OI-01 is decided.
 \end{enumerate}
