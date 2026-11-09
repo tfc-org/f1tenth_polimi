@@ -129,7 +129,7 @@ The branch patterns use GitHub's `fnmatch` syntax: `*` matches any characters ex
 | | `f1tenth_polimi` | `f1tenth_system_polimi` | `f1tenth_gym_polimi` |
 |---|---|---|---|
 | Ruleset | `std-policies` | `std-protection` | `std-protection` |
-| Protected branches | `main` (default) | default, `humble-*`, `jazzy-*`: `humble-devel`, `humble-polimi`, `jazzy-devel`, `jazzy-polimi` | default, `dev-humble*`, `dev-jazzy*`: `dev-humble`, `dev-humble-polimi`, `dev-jazzy`, `dev-jazzy-polimi` |
+| Protected branches | `main` (default) | default, `jazzy-*`: `jazzy-devel`, `jazzy-polimi` | default, `dev-jazzy*`: `dev-jazzy`, `dev-jazzy-polimi` |
 | Block deletion | yes | yes | yes |
 | Block force push | yes | yes | yes |
 | Restrict updates | no | yes, sync from upstream allowed | yes, sync from upstream allowed |
