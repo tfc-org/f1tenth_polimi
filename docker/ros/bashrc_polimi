@@ -1,25 +1,27 @@
 # Sourced from ~/.bashrc in the F1tenth_PoliMI containers.
 source /opt/ros/$ROS_DISTRO/setup.bash
-[ -f /opt/sim_ws/install/setup.bash ] && source /opt/sim_ws/install/setup.bash
 [ -f "$HOME/ws/install/setup.bash" ] && source "$HOME/ws/install/setup.bash"
 
 # Functions, not aliases: they also work in `docker compose exec arm bash -c "source /etc/bashrc_polimi && cb"`.
 sauce() {
     source /opt/ros/$ROS_DISTRO/setup.bash
-    [ -f /opt/sim_ws/install/setup.bash ] && source /opt/sim_ws/install/setup.bash
     [ -f "$HOME/ws/install/setup.bash" ] && source "$HOME/ws/install/setup.bash"
 }
 # Arguments go to colcon: cb --packages-select f1tenth_stack
-cb() { (cd "$HOME/ws" && colcon build --symlink-install "$@") && sauce; }
+cb() {
+    local paths=(--base-paths src src/f1tenth_gym_ros/polimi_sim)
+    [ -d /opt/f1tenth_gym ] || paths=(--base-paths src --packages-skip f1tenth_gym_ros)
+    (cd "$HOME/ws" && colcon build --symlink-install "${paths[@]}" "$@") && sauce
+}
 
 # Simulator as the car (polimi_sim): gym + LiDAR / actuation / odometry models + the car's mux.
 #   simcar                    -> map spielberg, laser sl450
 #   simcar spielberg debug_map_to_odom:=truth
 #   simcar spielberg lidar:=sl450
 #   simcar spielberg ideal:=true      -> no imperfections, to compare
-# The first argument is a map: a file name in ~/ws/config/maps. The rest goes straight to ros2 launch.
+# The first argument is a map: a file name in maps/ of ~/ws/config or polimi_sim's defaults. The rest goes straight to ros2 launch.
 simcar() {
     local map="spielberg"
     if [ $# -gt 0 ] && [[ "$1" != *":="* ]]; then map="$1"; shift; fi
-    ros2 launch polimi_sim sim_car.launch.py map:="$map" "$@"
+    ros2 launch polimi_sim sim_car.launch.py map:="$map" config_dir:="$HOME/ws/config" "$@"
 }
