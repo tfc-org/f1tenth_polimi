@@ -10,7 +10,7 @@
 \input{doc}
 \docbrand{polimi}
 
-\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The car: stack, car interface and deployment}{0.04}{F1tenth PoliMI team}
+\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The car: stack, car interface and deployment}{0.06}{F1tenth PoliMI team}
 \docclassification{Public}
 
 \newcommand{\prop}{\target{Proposed}}
@@ -20,7 +20,9 @@
 0.01 & 2026-10-25 & F1tenth PoliMI team & Initial draft from the car-interface design proposal and the runbooks; \code{car.md} and the hardware studies folded in (\cref{sec:hwsel}) \\
 0.02 & 2026-11-08 & F1tenth PoliMI team & Review of v0.01: DEC-08 follows the Jazzy migration; DEC-12 allows our packages in a fork's own folder; JetPack 7.2.1 on the car (DEC-13); Jazzy migration summarised (\cref{sec:migration}); stop-test chain, steering limits (T-12) and the \code{/joy} stand-in owner; references to working notes removed \\
 0.03 & 2026-11-09 & F1tenth PoliMI team & Controllers and tuning topics (PID and Pure Pursuit, FR-PTH-009); camera calibration procedure in the car bringup (FR-DRV-005, T-06); line detection on replayed camera bags; IMU model deferred until OI-08 \\
-0.04 & 2026-11-09 & F1tenth PoliMI team & Jazzy migration step 1 done: the images run on \code{ros:jazzy} with the DEC-02 packages and \code{f1tenth\_system} on \code{jazzy-polimi}; today-versus-target, deployment and repositories updated \\
+0.04 & 2026-11-09 & F1tenth PoliMI team & Plan review: simulator camera and camera-on-the-bench steps before the logic; bag replay in the launch, with the stack on \code{use\_sim\_time}; an online path carries its image's stamp \\
+0.05 & 2026-11-09 & F1tenth PoliMI team & Plan review: bag replay follows the Jazzy migration \\
+0.06 & 2026-11-09 & F1tenth PoliMI team & Jazzy migration step 1 done: the images run on \code{ros:jazzy} with the DEC-02 packages and \code{f1tenth\_system} on \code{jazzy-polimi}; today-versus-target, deployment and repositories updated. Plan review: camera on the bench before the simulator camera, bench bags carry the stand's camera pose \\
 }
 
 % ============================================================================
@@ -210,7 +212,8 @@ One entry point, \code{stack.launch.py}, with \code{hw:=car} or \code{hw:=sim}. 
   \begin{itemize}
     \item \code{common.launch.py}: \code{ackermann\_mux} with our \code{mux.yaml}, safety.
     \item \code{car.launch.py} (\code{hw:=car}): \code{f1tenth\_system}'s driver nodes one by one, \code{orbbec\_camera}, the mount TF from \code{config/car/}.
-    \item \code{sim.launch.py} (\code{hw:=sim}): includes the fork's \code{sim\_car.launch.py} with \code{config\_dir:=\textasciitilde/ws/config} and, from DEC-08, \code{teleop\_topic:=teleop}; nothing else.
+    \item \code{sim.launch.py} (\code{hw:=sim}): includes the fork's \code{sim\_car.launch.py} with \code{config\_dir:=\textasciitilde/ws/config} and, from DEC-08, \code{teleop\_topic:=teleop}; it forwards \code{camera\_source} and \code{camera\_uri}; nothing else.
+    \item bag replay (\code{hw:=sim camera\_source:=bag camera\_uri:=<bag>}, \code{TDD\_Gym}): every stack node gets \code{use\_sim\_time:=true}, so TF lookups run on the bag's clock, and only line detection runs.
     \item the logic: SLAM or localization, line detection, controller, as asked.
   \end{itemize}
 \end{itemize}
@@ -291,6 +294,7 @@ TF \code{base\_link}\arrowto\code{laser}, \code{camera\_link} & static TF & \cod
 \begin{itemize}
   \item \textbf{Input path:} \code{nav\_msgs/Path} on one topic, any frame; offline paths latched, online paths recomputed per camera frame (FR-PTH-002, 005).
   \item \textbf{Input pose:} TF lookup from the path's frame to \code{base\_link} (FR-PTH-003).
+  \item \textbf{Path stamp:} an online path carries the \code{header.stamp} of the image it came from, so the pose lookup and the simulator's line-detection score (\code{TDD\_Gym}) use the image time, not the processing time (FR-LIN-002).
   \item \textbf{Output:} \code{/drive}. A stale online path stops the car (FR-PTH-007).
   \item \textbf{Controllers:} the PID and Pure Pursuit, interchangeable (FR-PTH-004). Paths are closed loops only (FR-PTH-005).
   \item \textbf{Tuning:} each controller publishes its lateral error, heading error and look-ahead point as topics for plotting; every gain is a live parameter (FR-PTH-009).
@@ -368,7 +372,9 @@ Python & system Python of the image; \code{uv} on the host & house rule \\
   \item \textbf{Jazzy migration} (\cref{sec:migration}): Jazzy images, the JAX gym, the simulator fork as a submodule.
   \item \textbf{\code{polimi\_bringup}:} the car interface README, \code{stack.launch.py}, \code{sim.launch.py}, \code{common.launch.py}, our \code{mux.yaml}; \code{simcar} calls \code{hw:=sim}; with DEC-08 the mux leaves the simulator fork.
   \item \textbf{Safety:} OI-09 locks and AEB, with the \code{/joy} stand-in (T-01), tested in the simulator.
-  \item \textbf{Logic:} mapping and localization, line detection (on replayed camera bags of the real tape, \code{TDD\_Gym}), path following (PID and Pure Pursuit, error topics), as the base platform needs.
+  \item \textbf{Camera on the bench}, before the car is built: the 335L with \code{orbbec\_camera}, its topic names (T-02) and profiles (\code{TDD\_Gym} S-06), the tape and floor chosen (RASD A-002, A-003; \code{TDD\_Gym} S-04), the first bags of the real tape, each with the stand's camera pose in \code{/tf\_static} (\code{TDD\_Gym}).
+  \item \textbf{Simulator camera} (\code{TDD\_Gym}): bag replay first, on the bench bags; then the room world with a taped track, the drawn camera and \code{track\_monitor}, for AC-V1-02 in the simulator.
+  \item \textbf{Logic:} mapping and localization, line detection (on replayed camera bags of the real tape and on the drawn camera, \code{TDD\_Gym}), path following (PID and Pure Pursuit, error topics), as the base platform needs.
   \item \textbf{Car bringup}, when the car is built: \code{car.launch.py}, udev rules, measured configs, the camera calibration procedure, safety tests on the car.
   \item \textbf{Advanced topic} \target{V2}, once OI-01 is decided.
 \end{enumerate}
