@@ -9,7 +9,7 @@
 \input{doc}
 \docbrand{polimi}
 
-\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The simulator: gym, bridge and car models}{0.07}{F1tenth PoliMI team}
+\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The simulator: gym, bridge and car models}{0.08}{F1tenth PoliMI team}
 \docclassification{Public}
 
 \newcommand{\prop}{\target{Proposed}}
@@ -25,6 +25,7 @@
 0.05 & 2026-11-09 & F1tenth PoliMI team & Plan review: the Jazzy migration comes first, then bag replay; car bags are recorded and replayed on Jazzy \\
 0.06 & 2026-11-09 & F1tenth PoliMI team & The images run ROS~2 Jazzy (migration step 1); the camera's \code{bag} source is built in the fork after the migration. Plan review: bench bags carry the stand's camera pose as a static TF; the build order is kept in the \code{TDD\_F1tenth} plan \\
 0.07 & 2026-11-09 & F1tenth PoliMI team & Jazzy migration done for the simulator: JAX gym \code{dev-jax}, our fork of the \code{dev-jazzy} bridge as a submodule with \code{polimi\_sim} inside, one \code{SegmentScanSimulator2D} per LiDAR block, rear-axle poses, labelled defaults and the config overlay (DEC-15) \\
+0.08 & 2026-11-10 & F1tenth PoliMI team & Matched to the repo: \code{polimi\_sim} and its defaults in the fork, a file in \code{config\_dir} wins; rear-axle poses done; \code{demo\_room} not built yet; S-05, the migration is done \\
 }
 
 % ============================================================================
