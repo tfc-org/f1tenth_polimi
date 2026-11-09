@@ -10,7 +10,7 @@
 \input{doc}
 \docbrand{polimi}
 
-\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The car: stack, car interface and deployment}{0.06}{F1tenth PoliMI team}
+\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The car: stack, car interface and deployment}{0.07}{F1tenth PoliMI team}
 \docclassification{Public}
 
 \newcommand{\prop}{\target{Proposed}}
@@ -23,6 +23,7 @@
 0.04 & 2026-11-09 & F1tenth PoliMI team & Plan review: simulator camera and camera-on-the-bench steps before the logic; bag replay in the launch, with the stack on \code{use\_sim\_time}; an online path carries its image's stamp \\
 0.05 & 2026-11-09 & F1tenth PoliMI team & Plan review: bag replay follows the Jazzy migration \\
 0.06 & 2026-11-09 & F1tenth PoliMI team & Jazzy migration step 1 done: the images run on \code{ros:jazzy} with the DEC-02 packages and \code{f1tenth\_system} on \code{jazzy-polimi}; today-versus-target, deployment and repositories updated. Plan review: camera on the bench before the simulator camera, bench bags carry the stand's camera pose \\
+0.07 & 2026-11-09 & F1tenth PoliMI team & Jazzy migration steps 2 and 3 done: the simulator fork is the submodule \code{ros2\_ws/src/f1tenth\_gym\_ros} with \code{polimi\_sim}, on the JAX gym; repositories and today-versus-target updated \\
 }
 
 % ============================================================================
@@ -49,7 +50,7 @@ This document defines how the car's software is built: the layers of the stack, 
 \dec\ agreed \quad \prop\ proposed, waiting for the team's confirmation \quad \target{V2} later phase \quad \tbd\ open.
 
 \begin{caveat}
-\textbf{Today versus target.} The images run ROS~2 Jazzy and the drivers come from \code{jazzy-polimi}: step 1 of the Jazzy migration (\cref{sec:migration}) is done. The simulator still runs the Humble-era gym and bridge, and \code{polimi\_sim} is still in this repo, until steps 2 and 3. This document describes the Jazzy target; where today differs, it says so.
+\textbf{Today versus target.} The images run ROS~2 Jazzy and the drivers come from \code{jazzy-polimi}: steps 1 to 3 of the Jazzy migration (\cref{sec:migration}) are done: the simulator runs the JAX gym and our fork of the bridge, the submodule \code{ros2\_ws/src/f1tenth\_gym\_ros}, with \code{polimi\_sim} inside. Step 4 (GitHub defaults and rules, Humble leftovers) is left. This document describes the Jazzy target; where today differs, it says so.
 \end{caveat}
 
 % ============================================================================
@@ -199,7 +200,7 @@ VESC 6 MkVI & USB, \code{/dev/sensors/vesc} (udev rule \tbd) & \code{vesc\_drive
 \midrule
 \code{f1tenth\_polimi} & -- (this repo) & Our packages, configs, maps, Docker, docs \\
 \code{f1tenth\_system\_polimi} & \code{ros2\_ws/src/f1tenth\_system} & Upstream drivers, branch \code{jazzy-polimi} \\
-\code{f1tenth\_gym\_polimi} & \code{ros2\_ws/src/f1tenth\_gym\_ros} (after the migration) & Upstream bridge plus \code{polimi\_sim}, branch \code{dev-jazzy-polimi} \\
+\code{f1tenth\_gym\_polimi} & \code{ros2\_ws/src/f1tenth\_gym\_ros} & Upstream bridge plus \code{polimi\_sim}, branch \code{dev-jazzy-polimi} \\
 \bottomrule
 \end{tabularx}
 
