@@ -9,21 +9,15 @@
 ARG ROS_DISTRO=jazzy
 FROM ros:${ROS_DISTRO}
 
-ARG USER
-ARG UID
-ARG GID
-ARG WITH_SIM=1
-# Pinned upstream commits. Bump on purpose, never follow the branch.
-ARG GYM_REF=bdaec1420c3b0f103858d289866d0d4e2e597c30
-ARG GYM_ROS_REF=08395766c4d9dc5a763381f1dd6fa4a3d68df66e
-# f1tenth_stack depends on drivers we don't use (Hokuyo, SICK, rosbridge).
-ARG ROSDEP_SKIP="urg_node sick_scan_xd rosbridge_server"
-
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN rm -f /etc/apt/apt.conf.d/docker-clean \
+    && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
         sudo git tmux nano less wget jq net-tools joystick \
         python3-pip python3-dev python3-colcon-common-extensions python3-colcon-clean \
         libasio-dev \
@@ -42,28 +36,37 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ros-${ROS_DISTRO}-nav2-map-server \
         ros-${ROS_DISTRO}-nav2-lifecycle-manager \
         ros-${ROS_DISTRO}-foxglove-bridge \
-        ros-${ROS_DISTRO}-rviz2 \
-    && rm -rf /var/lib/apt/lists/*
+        ros-${ROS_DISTRO}-rviz2
 
 # Simulator: f1tenth_gym (Python) + f1tenth_gym_ros (ROS bridge) as an underlay.
 # pip quirks copied from upstream gym_ros: a fresh pip is needed for the gym's
 # build backend. Pins, if ever needed, go in /tmp/pip-constraints.txt.
-RUN if [ "${WITH_SIM}" = "1" ]; then \
-        pip3 install --no-cache-dir --ignore-installed pip \
+ARG WITH_SIM=1
+# Pinned upstream commits. Bump on purpose, never follow the branch.
+ARG GYM_REF=bdaec1420c3b0f103858d289866d0d4e2e597c30
+ARG GYM_ROS_REF=08395766c4d9dc5a763381f1dd6fa4a3d68df66e
+RUN --mount=type=cache,target=/root/.cache/pip \
+    --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    if [ "${WITH_SIM}" = "1" ]; then \
+        pip3 install --ignore-installed pip \
         && touch /tmp/pip-constraints.txt \
         && git clone https://github.com/f1tenth/f1tenth_gym.git /opt/f1tenth_gym \
         && git -C /opt/f1tenth_gym checkout -q ${GYM_REF} \
-        && pip3 install --no-cache-dir --ignore-installed -c /tmp/pip-constraints.txt /opt/f1tenth_gym \
+        && pip3 install --ignore-installed -c /tmp/pip-constraints.txt /opt/f1tenth_gym \
         && git clone https://github.com/f1tenth/f1tenth_gym_ros.git /opt/sim_ws/src/f1tenth_gym_ros \
         && git -C /opt/sim_ws/src/f1tenth_gym_ros checkout -q ${GYM_ROS_REF} \
         && apt-get update \
         && rosdep install --from-paths /opt/sim_ws/src --ignore-src --rosdistro ${ROS_DISTRO} -y \
         && source /opt/ros/${ROS_DISTRO}/setup.bash \
         && cd /opt/sim_ws && colcon build \
-        && rm -rf /opt/sim_ws/build /opt/sim_ws/log /var/lib/apt/lists/*; \
+        && rm -rf /opt/sim_ws/build /opt/sim_ws/log; \
     fi
 
 # Non-root user matching the host's UID/GID, so files in bind mounts stay yours.
+ARG USER
+ARG UID
+ARG GID
 # It also owns /opt/sim_ws: gym_bridge_launch.py writes a scaled map copy next to itself.
 RUN if id -u ubuntu >/dev/null 2>&1; then userdel -r ubuntu; fi \
     && (getent group ${GID} || groupadd -g ${GID} ${USER}) \
@@ -73,12 +76,16 @@ RUN if id -u ubuntu >/dev/null 2>&1; then userdel -r ubuntu; fi \
 
 # System deps of everything in ros2_ws/src. Kept last: any change under
 # ros2_ws/src re-runs this step, and nothing expensive should sit after it.
+# f1tenth_stack depends on drivers we don't use (Hokuyo, SICK, rosbridge).
+ARG ROSDEP_SKIP="urg_node sick_scan_xd rosbridge_server"
 COPY ros2_ws/src /tmp/src
-RUN apt-get update \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    apt-get update \
     && (rosdep init 2>/dev/null || true) && rosdep update --rosdistro ${ROS_DISTRO} \
     && rosdep install --from-paths /tmp/src --ignore-src --rosdistro ${ROS_DISTRO} -y \
         --skip-keys "${ROSDEP_SKIP}" \
-    && rm -rf /tmp/src /var/lib/apt/lists/*
+    && rm -rf /tmp/src
 
 # build/install/log are named volumes: a new, empty volume takes the ownership
 # of the image directory it is mounted on, so these must exist and be the user's.
