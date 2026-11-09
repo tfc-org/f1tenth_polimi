@@ -13,9 +13,10 @@ Pick the service for your machine. `arm` is used in the examples; replace it wit
 | `jet` | Orin Nano on the car | no | host |
 | `novnc` | Optional browser display for RViz (profile `gui`) | – | port `8080` |
 
-- One image per target, built from `docker/ros/Dockerfile` on `ros:humble`.
+- One image per target, built from `docker/ros/Dockerfile` on `ros:jazzy` (Ubuntu 24.04, Python 3.12). The distro is the build argument `ROS_DISTRO`; images are tagged `f1tenth_polimi:jazzy_<service>`.
+- The container user gets the host's UID and GID (`HOST_UID`, `HOST_GID`). The base image's own `ubuntu` user (UID 1000) is removed first, so a host UID of 1000 (usual on the Jetson and on Linux PCs) works too.
 - Bind mounts: `ros2_ws/src`, `ros2_ws/config`, `ros2_ws/maps`, `docker/ros/bashrc_polimi` (read-only, over the copy baked into the image), and `docker/ros/python3-ros` (read-only, see [PyCharm interpreter](#pycharm-interpreter)).
-- `build/`, `install/`, `log/` live in Docker volumes (`build_arm`, …), not in the repo: build output stays out of git and is kept between container restarts.
+- `build/`, `install/`, `log/` live in Docker volumes named after the distro (`build_jazzy_arm`, …), not in the repo: build output stays out of git and is kept between container restarts.
 - Ports bind to `127.0.0.1` only.
 
 ## Everyday commands
@@ -73,6 +74,22 @@ What to do after a change, from cheapest to most expensive:
 
 A `package.xml` needs a rebuild because rosdep runs at build time. Bump `GYM_REF` / `GYM_ROS_REF` on purpose, never follow the branch.
 
+### OpenCV and NumPy
+
+The image holds two copies of each. Apt's (`/usr/lib/python3/dist-packages`) come with `cv_bridge`, which `compressed_image_transport` and `orbbec_camera` need. The simulator's pip copies (`/usr/local/lib/python3.12/dist-packages`) come with the gym and are first on Python's path. Rules:
+
+1. The apt layer stays before the gym's pip layer in the Dockerfile, so the pip copies win.
+2. Python nodes never import `cv_bridge`, `tf_transformations` or `transforms3d`: they are built against apt's NumPy and break under the gym's NumPy 2. Convert images with NumPy and quaternions with our own helpers. C++ nodes are not affected.
+3. No `python3-opencv`, `python3-pil` or `python3-numba` in our `package.xml` files.
+
+Check in the container:
+
+```bash
+python3 -c "import cv2, numpy; print(cv2.__file__, cv2.__version__, numpy.__file__, numpy.__version__)"
+```
+
+Both paths must be under `/usr/local/`.
+
 A rebuild reuses the cache up to the first changed step. If it downloads everything again, the cache was pruned (`docker builder prune`, or Docker Desktop's automatic cleanup) or the image predates a Dockerfile change: one slow build, then it's fast again.
 
 ```bash
@@ -124,6 +141,8 @@ docker compose rm -sf novnc                # stop and remove
 ## Cleanup
 
 Docker images and build cache grow over time.
+
+The Humble images (`f1tenth_polimi:humble_*`) and volumes (`build_arm`, …) from before the Jazzy migration stay until its acceptance, for rollback; delete them then.
 
 ```bash
 docker compose down -v                     # also delete build/install/log volumes
