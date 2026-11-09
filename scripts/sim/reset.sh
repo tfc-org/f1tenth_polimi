@@ -1,7 +1,7 @@
 #!/bin/bash
 # Put the car back on the track and zero its odometry, as if the simulator had just started.
 #   reset.sh            start pose of the running map
-#   reset.sh levine     start pose of that map (ros2_ws/config/maps/levine.yaml)
+#   reset.sh levine     start pose of that map (ros2_ws/config/maps/levine.yaml, else polimi_sim's default)
 #   reset.sh 3.0 1.5 0.26   x [m], y [m], yaw [rad] in the map frame
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/.utils/common.sh"
@@ -10,8 +10,10 @@ require_sim
 if [ $# -eq 3 ]; then
     x=$1 y=$2 yaw=$3
 elif [ $# -le 1 ]; then
-    map_file="ros2_ws/config/maps/${1:-$(running_map)}.yaml"
-    [ -f "$map_file" ] || { echo "$map_file not found" >&2; exit 1; }
+    map="${1:-$(running_map)}"
+    map_file="ros2_ws/config/maps/$map.yaml"
+    [ -f "$map_file" ] || map_file="ros2_ws/src/f1tenth_gym_ros/polimi_sim/config/defaults/maps/$map.yaml"
+    [ -f "$map_file" ] || { echo "maps/$map.yaml is in neither ros2_ws/config nor polimi_sim's defaults" >&2; exit 1; }
     value() { awk -v key="$1:" '$1 == key { print $2 }' "$map_file"; }
     x=$(value sx) y=$(value sy) yaw=$(value stheta)
 else
