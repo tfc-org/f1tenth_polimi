@@ -6,6 +6,7 @@ include Latex_Templates/core/build/docbuild.mk
 # Settings (Latex_Templates/core/build/README.md), paths relative to this Makefile; commented lines show defaults:
 DOCBUILD_SRC := software/Source_Documentation
 DOCBUILD_OUT := software/PDF_Documentation
+DOCBUILD_BASELINE := file
 DOCBUILD_RELEASE_TAGS := false
 # DOCBUILD_TAG_PREFIX :=
 # DOCBUILD_DIFF := true

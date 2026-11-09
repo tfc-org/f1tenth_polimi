@@ -8,12 +8,14 @@
 \input{doc}
 \docbrand{polimi}
 
-\docsetup{Requirements Analysis and Specification Document (RASD)}{F1tenth PoliMI}{The car: base platform and advanced topic}{0.01}{F1tenth PoliMI team}
+\docsetup{Requirements Analysis and Specification Document (RASD)}{F1tenth PoliMI}{The car: base platform and advanced topic}{0.03}{F1tenth PoliMI team}
 \docclassification{Public}
 
 \begin{document}
 \docfrontmatter{
 0.01 & 2026-10-25 & F1tenth PoliMI team & Initial draft, folded from \code{docs/scope.md} (21 Oct 2026), the hardware comparisons and the master BOM; \code{scope.md} at commit \code{425ee04} \\
+0.02 & 2026-11-08 & F1tenth PoliMI team & Review of v0.01: localization as a particle filter (AMCL by default); AEB acts on the autonomy only; fork rule for our packages; provisional V1 top speed 3\,m/s; camera 60\,fps target, 30\,fps minimum; JetPack 7.2.1 on the car (C-024); \code{/joy} stand-in with the safety locks; references to working notes removed \\
+0.03 & 2026-11-09 & F1tenth PoliMI team & Exercise features: Pure Pursuit beside the PID (FR-PTH-004), tracking errors and live gains (FR-PTH-009), camera calibration procedure (FR-DRV-005); OI-04 closed, offline paths are closed loops only; first line-detection data are camera bags of the real tape, replayed in the simulator \\
 }
 
 % ============================================================================
@@ -112,6 +114,7 @@ C-020 & ROS~2 Jazzy on every image, Mac and car. Humble ends on 31 May 2027, bef
 C-021 & The stack runs in Docker, the same on the simulator and on the car. & S \\
 C-022 & Drivers come from our fork of \code{f1tenth\_system} (branch \code{jazzy-polimi}); the LiDAR and the camera are driven by Orbbec's \code{orbbec\_camera}. & S, D \\
 C-023 & The simulator is upstream's JAX gym (\code{dev-jax}) and bridge (\code{dev-jazzy}) with our extensions in our fork of \code{f1tenth\_gym\_ros} (OI-13). & D \\
+C-024 & The Orin Nano runs JetPack 7.2.1 (Jetson Linux 39.2.1, Ubuntu 24.04, CUDA 13), so the stack's container can use the GPU (decided 8 Nov 2026). & D \\
 \bottomrule
 \end{tabularx}
 
@@ -188,6 +191,7 @@ FR-DRV-001 & The stack shall drive the motor and the servo through the VESC and 
 FR-DRV-002 & The stack shall read the joystick and turn it into drive commands while the operator holds the enable button. & V1 & S \\
 FR-DRV-003 & The stack shall publish the Pulsar SL450 scans and the Gemini 335L colour images, camera info and IMU through \code{orbbec\_camera}. & V1 & S \\
 FR-DRV-004 & The stack shall publish the mounting transforms from \code{base\_link} to the LiDAR and to the camera, from measured values. & V1 & C \\
+FR-DRV-005 & The camera shall be calibrated with a written, repeatable procedure: check the factory intrinsics and measure the camera-to-floor transform with a target on the floor. & V1 & D \\
 \bottomrule
 \end{tabularx}
 
@@ -202,7 +206,7 @@ FR-MAP-002 & The map shall be of the room, not of the track. & V1 & S \\
 \paragraph{Localization (LOC)}
 \begin{tabularx}{\textwidth}{Q}
 \reqhead
-FR-LOC-001 & The stack shall localize the car in the saved room map with AMCL, from odometry and LiDAR scans. Node choice \tbd[OI-07]. & V1 & S \\
+FR-LOC-001 & The stack shall localize the car in the saved room map with a particle filter (AMCL by default), from odometry and LiDAR scans. Node choice \tbd[OI-07]. & V1 & S \\
 FR-LOC-002 & The stack shall accept an initial pose from the operator. & V1 & S \\
 FR-LOC-003 & The stack should fuse wheel odometry and the camera IMU into \code{odom} with an EKF. \tbd[OI-08] & V1 & S \\
 \bottomrule
@@ -222,11 +226,12 @@ FR-LIN-002 & The stack shall publish the track centre as a \code{nav\_msgs/Path}
 FR-PTH-001 & A PID controller shall drive the car on the lateral (and heading) error between the car's pose and a path. Form \tbd[OI-05]. & V1 & S \\
 FR-PTH-002 & The path shall be a \code{nav\_msgs/Path} on one topic, in any frame: drawn by the user (map), from line detection (car frame), or the racing line of option A (map). & V1 & S \\
 FR-PTH-003 & The pose shall be read from TF in the path's frame. A path in the car frame shall need no map pose. & V1 & S \\
-FR-PTH-004 & The controller shall publish \code{/drive}. Any node with the same inputs (path, pose) and output shall be able to replace it, for example Pure Pursuit. & V1 & S \\
-FR-PTH-005 & Offline paths (hand-drawn, racing line) shall be computed once, saved to a file and published once as a closed loop (latched). Open paths \tbd[OI-04]. & V1 & S \\
+FR-PTH-004 & The controller shall publish \code{/drive}. Any node with the same inputs (path, pose) and output shall be able to replace it. The stack shall provide Pure Pursuit beside the PID, with the same inputs and output. & V1 & S, D \\
+FR-PTH-005 & Offline paths (hand-drawn, racing line) shall be computed once, saved to a file and published once as a closed loop (latched). Open paths are not supported (OI-04). & V1 & S, D \\
 FR-PTH-006 & On a full loop the controller shall search the closest point only in a window after the last one it used; on a fragment it shall search all of it. & V1 & S \\
 FR-PTH-007 & If an online path stops updating (the camera loses the tape), the controller shall stop the car. A latched offline path is never stale. & V1 & S \\
 FR-PTH-008 & The stack shall provide a path drawn in the map. Source \tbd[OI-03]: teach and repeat suggested for V1, tape mapping later. & V1 & S \\
+FR-PTH-009 & The controller shall publish its lateral error, heading error and look-ahead point, and its gains shall be tunable while it runs. & V1 & D \\
 \bottomrule
 \end{tabularx}
 
@@ -236,7 +241,7 @@ FR-PTH-008 & The stack shall provide a path drawn in the map. Source \tbd[OI-03]
 FR-SAF-001 & A person with the joystick shall always be able to override the autonomy: the joystick has priority over \code{/drive}. & V1 & S \\
 FR-SAF-002 & An emergency stop shall stop the car whatever is driving. Mechanism \tbd[OI-09]. & V1 & S \\
 FR-SAF-003 & The autonomy shall drive only while the operator holds the deadman; releasing it shall stop the car. Mechanism \tbd[OI-09]. & V1 & S, C \\
-FR-SAF-004 & Automatic emergency braking (AEB) shall compute the time to collision from the LiDAR and brake under a threshold, whatever is driving, while still letting a person drive the car away. & V1 & S \\
+FR-SAF-004 & Automatic emergency braking (AEB) shall stop the autonomy's commands when the time to collision computed from the LiDAR falls under a threshold. A person on the joystick keeps control and can drive the car away. & V1 & S \\
 FR-SAF-005 & Each command input shall time out: a source that stops sending loses control of the car. & V1 & C \\
 \bottomrule
 \end{tabularx}
@@ -292,9 +297,9 @@ NFR-POR-001 & The same stack, images and launch shall run on the simulator (Mac,
 \toprule
 \hd{ID} & \hd{Requirement} & \hd{Target} & \hd{Justification} \\
 \midrule
-NFR-PER-001 & Top speed on the track & \tbd & Not set by the scope. The sensor choice was made for 5--8\,m/s (H). \\
+NFR-PER-001 & Top speed on the track & 3\,m/s (V1, provisional) & Not set by the scope; revised after the first laps. The sensors were chosen for 5--8\,m/s (H), which stays a V2 and tuning target. \\
 NFR-PER-002 & Scan rate & 40\,Hz & At 8\,m/s a 10\,Hz LiDAR leaves 80\,cm between scans, too much for scan matching (H). \\
-NFR-PER-003 & Camera frame rate & $\geq$ 60\,fps & At 8\,m/s, 30\,fps means 27\,cm travelled per frame (H). \\
+NFR-PER-003 & Camera frame rate & 60\,fps target, $\geq$ 30\,fps accepted & At 8\,m/s, 30\,fps means 27\,cm travelled per frame (H); at the V1 speed of 3\,m/s, 10\,cm. 60\,fps becomes required once the Gemini 335L's 1280\x720 at 60\,fps in YUYV is checked on the bench. \\
 NFR-PER-004 & Timestamp error & $\leq$ 10\,ms & 10\,ms at 8\,m/s is 8\,cm on the floor (H). \\
 NFR-PER-005 & Command timeout & 0.2\,s per mux input & Today's \code{ackermann\_mux} configuration (C). \\
 \bottomrule
@@ -308,7 +313,7 @@ NFR-PER-005 & Command timeout & 0.2\,s per mux input & Today's \code{ackermann\_
 
 \subsubsection{Maintainability}
 \begin{itemize}
-  \item \textbf{NFR-MNT-001:} the forks stay upstream plus our upstreamable fixes; our code lives in \code{polimi\_*} packages in our repo.
+  \item \textbf{NFR-MNT-001:} upstream's files in a fork take only fixes we could send upstream, one commit each. Our code lives in \code{polimi\_*} packages, in our repo or in a fork in their own folder (\code{polimi\_sim/} in the simulator fork), never mixed into upstream's files.
   \item \textbf{NFR-MNT-002:} pinned dependencies are bumped on purpose, never by following a branch.
 \end{itemize}
 
@@ -353,7 +358,7 @@ Advanced topic & FR-ADV \\
 \section{Implementation Guidelines}
 % ============================================================================
 \subsection{Technology Stack}
-ROS~2 Jazzy, \code{rmw\_zenoh\_cpp}, Docker images per machine type (\code{arm} Apple Silicon, \code{x86} PC, \code{jet} Orin Nano), \code{f1tenth\_system} drivers, \code{orbbec\_camera}, \code{slam\_toolbox}, \code{nav2\_amcl}, \code{robot\_localization}. Details in \code{TDD\_F1tenth}.
+ROS~2 Jazzy, \code{rmw\_zenoh\_cpp}, JetPack 7.2.1 on the car (C-024), Docker images per machine type (\code{arm} Apple Silicon, \code{x86} PC, \code{jet} Orin Nano), \code{f1tenth\_system} drivers, \code{orbbec\_camera}, \code{slam\_toolbox}, \code{nav2\_amcl}, \code{robot\_localization}. Details in \code{TDD\_F1tenth}.
 
 \subsection{Development Standards}
 Every change goes through a pull request; the shared branches are protected. Python through \code{uv}. Runbooks in \code{docs/software/}.
@@ -367,8 +372,8 @@ Every function runs in the simulator first, then on the car. The acceptance belo
 \hd{ID} & \hd{Done when} & \hd{Covers} \\
 \midrule
 \endhead
-AC-V1-01 & The car maps the room and localizes with AMCL. & FR-MAP, FR-LOC \\
-AC-V1-02 & With the PID it drives full laps of the taped track without leaving the lines, on the track centre seen by the camera, on the car and in the simulator. & FR-LIN, FR-PTH, FR-SIM \\
+AC-V1-01 & The car maps the room and localizes in the map (OI-07). & FR-MAP, FR-LOC \\
+AC-V1-02 & With the PID it drives full laps of the taped track without leaving the lines at up to the V1 top speed (NFR-PER-001), on the track centre seen by the camera, on the car and in the simulator. & FR-LIN, FR-PTH, FR-SIM, NFR-PER-001 \\
 AC-V1-03 & The same, on a path drawn in the map. & FR-PTH-008, FR-LOC \\
 AC-V1-04 & Tested on the car: pressing the emergency stop, releasing the deadman, taking over with the joystick and an obstacle in front each stop the car or hand it to the person. & FR-SAF \\
 AC-V2-A & Option A: the car laps faster on the optimized line than on the centre line without leaving the lines, measured as lap times and line crossings over several laps. & FR-ADV-001 to 003 \\
@@ -403,11 +408,12 @@ Summer school & \tbd & \tbd \\
 \midrule
 \endhead
 Chassis is end of life, low stock & Medium & High & Several retailers in the BOM; Plan B parts list in \code{TDD\_F1tenth}, Hardware Selection (H) \\
-Glare or floor reflections hide the tape & Medium & High & Early phone video of the real tape; method choice OI-06; global-shutter camera \\
+Glare or floor reflections hide the tape & Medium & High & Early bags of the real tape from the camera, replayed into line detection (\code{TDD\_Gym}); method choice OI-06; global-shutter camera \\
 Symmetric rectangular room confuses localization & Medium & Medium & Always give the initial pose (OI-07) \\
 People or moved furniture change the room after mapping & High & Medium & Re-map on site (A-001); option B corrects from the tape \\
 Camera pitch under braking breaks the floor projection & Medium & Medium & Floor plane from depth, or the IMU (H) \\
-No USB passthrough on Docker Desktop for macOS: no joystick in the simulator & High & Medium & A stand-in for the joystick in the simulator \tbd \\
+No USB passthrough on Docker Desktop for macOS: no joystick in the simulator & High & Medium & A \code{/joy} stand-in (a keyboard or Foxglove key that holds the deadman and toggles the emergency stop), built with the safety locks (OI-09) \\
+The Gemini 335L has no 1280\x720 at 60\,fps in YUYV & Medium & Medium & Stay at 30\,fps, which caps the speed line detection can follow (NFR-PER-003); list the camera's profiles on the bench before tuning for speed \\
 A gain from option A too small to measure in a small room & Medium & Medium & Decide OI-01 after V1 runs \\
 \bottomrule
 \end{tabularx}
@@ -426,19 +432,18 @@ Decisions and checks the requirements leave open, folded from the scope with the
 OI-01 & [DECIDE] Advanced topic: option A (racing line) or B (hybrid localization). \textbf{Held} until the base platform runs (21 Oct 2026). & Both need the tape lines in map coordinates (OI-03). A also needs the vehicle parameters (friction, CoG height), the TUM optimizer, a controller that holds at speed and a localization that keeps up; easy to prove (lap times, line crossings), but the gain is small in a small room. B needs an EKF, a camera correction that observes only the lateral offset and heading to the tape, and handling of sensor failures; harder to prove on the car (needs a ground truth) and overlaps exercise 5. & FR-ADV \\
 OI-02 & [DECIDE] Frame of the line-detection path: \code{base\_link} or \code{odom}. & Suggested: \code{odom}, transformed at the image time stamp. It compensates the camera latency, keeps a fragment valid between frames, and turns the stale-path rule into ``keep going on the last path for a short distance, then stop''. Alternative: \code{base\_link}, with the PID looking up the transform at the image time. The path-following contract (any frame) does not change. & FR-LIN-002 \\
 OI-03 & [DECIDE] Where the path drawn in the map comes from. The tape is not in the LiDAR map, so the path cannot be drawn by hand inside it. & Suggested for the base platform: teach and repeat: drive the camera follower (1b) slowly with AMCL running, record the poses in the map, smooth them, save them as the path. Later, for A or B: tape mapping, projecting the detected tape into the map to build the two boundary lines. & FR-PTH-008 \\
-OI-04 & [DECIDE] Open paths. Exercise 1a starts from a straight line, but offline paths are published as closed loops. & Add an open-path mode: the PID stops the car at the end of the path. & FR-PTH-005 \\
 OI-05 & [DECIDE] Form of the PID. A PID on the lateral error alone oscillates as speed rises. & Lateral and heading error with a look-ahead point (Stanley-like); Pure Pursuit as the drop-in for higher speed. & FR-PTH-001 \\
-OI-06 & [DECIDE] Line detection method. & (a) Image space: colour threshold, bird's-eye view, sliding windows, polynomial fit (the classic exercise 2). (b) Floor points: segment the tape, project the pixels onto the floor, fit and track the lines in \code{odom} (also feeds tape mapping, OI-03). (c) A learned segmentation, only if thresholds fail on the real floor. Hard cases for all: hairpins with three or four lines in view, one line in view, glare. First data: phone video of the real tape. & FR-LIN-001 \\
+OI-06 & [DECIDE] Line detection method. & (a) Image space: colour threshold, bird's-eye view, sliding windows, polynomial fit (the classic exercise 2). (b) Floor points: segment the tape, project the pixels onto the floor, fit and track the lines in \code{odom} (also feeds tape mapping, OI-03). (c) A learned segmentation, only if thresholds fail on the real floor; it can run on the Orin's GPU (C-024). Hard cases for all: hairpins with three or four lines in view, one line in view, glare. First data: bags of the real tape from the camera. & FR-LIN-001 \\
 OI-07 & [DECIDE] Localization node. & \code{nav2\_amcl} (named by the scope; in the image with DEC-02 of the TDD), \code{slam\_toolbox} in localization mode, or MIT \code{particle\_filter} if AMCL is too slow at speed. Risks: a symmetric rectangular room (always give the initial pose), people around the track, furniture moved after mapping. & FR-LOC-001 \\
 OI-08 & [DECIDE] EKF for \code{odom} (wheel odometry and the camera IMU, \code{robot\_localization}) in the base platform. & Suggested: yes. It helps exercise 1a and both options, and is the first half of exercise 5. & FR-LOC-003 \\
-OI-09 & [VERIFY] Safety with \code{ackermann\_mux} locks. & Emergency stop: a latched lock above the joystick. Autonomy deadman: a lock with a timeout between \code{/drive} and the joystick, released while RB is held (today RB's \code{autonomous\_control} publishes to \code{/dev/null}, so the autonomy is not gated). AEB: an input between \code{/drive} and the joystick that brakes under a time-to-collision threshold, so a person can still drive the car away. Check how locks behave in this mux. & FR-SAF-002, 003 \\
+OI-09 & [VERIFY] Safety with \code{ackermann\_mux} locks. & Emergency stop: a latched lock above the joystick. Autonomy deadman: a lock with a timeout between \code{/drive} and the joystick, released while RB is held (today RB's \code{autonomous\_control} publishes to \code{/dev/null}, so the autonomy is not gated). AEB: an input between \code{/drive} and the joystick that brakes under a time-to-collision threshold, so a person can still drive the car away. Timeout: on a silent input the mux could hand over to a zero-speed input, so the car stops at once rather than after the VESC timeout (NFR-PER-005). Check how locks behave in this mux. & FR-SAF-002, 003 \\
 OI-11 & [DECIDE] Off-track report from the stack's own estimate (optional). On the car, leaving the lines is judged by the people watching; there is no external tracking. & A node that compares the car's footprint at the stack's pose (map or odom) with the tape lines (tape map or detected lines) and reports when it believes the car is off the track. It only reports, never stops the car, and shows what the stack believes, not the truth. & FR-OFF-001 \\
-OI-12 & [DECIDE] Exercises in the simulator: reference or required. & Suggested (user, 21 Oct 2026): reference only, not required in the simulator or the base platform; the simulator covers what the base platform's acceptance needs. Optional simulator additions for the exercises are in simulation plan 01.5 (O-25). & \cref{sec:exercises} \\
+OI-12 & [DECIDE] Exercises in the simulator: reference or required. & Suggested (user, 21 Oct 2026): reference only, not required in the simulator or the base platform; the simulator covers what the base platform's acceptance needs. & \cref{sec:exercises} \\
 \bottomrule
 \end{tabularx}
 \end{small}
 
-Decided: OI-10 (one image rebuild with \code{nav2\_amcl}, \code{robot\_localization}, \code{image\_transport\_plugins}, \code{cv\_bridge}; 22 Oct 2026) and OI-13 (Jazzy, C-020; 21 Oct 2026).
+Decided: OI-04 (no open-path mode: offline paths are closed loops only; 8 Nov 2026), OI-10 (one image rebuild with \code{nav2\_amcl}, \code{robot\_localization}, \code{image\_transport\_plugins}, \code{cv\_bridge}; 22 Oct 2026) and OI-13 (Jazzy, C-020; 21 Oct 2026).
 
 % ============================================================================
 \section{Glossary and References}
