@@ -10,6 +10,8 @@ Shortcuts to run the simulator from the host, without typing the `docker compose
 | `reset.sh [map \| x y yaw]` | Puts the car back at the start pose of the running map, of another map, or at a pose, and zeroes `/odom`. |
 | `stop.sh [--volumes]` | Stops the simulator and the container. |
 
+The root `Makefile` runs the same scripts: `make` lists the commands. Map, launch args and pose go in variables: `make sim MAP=levine ARGS='lidar:=sl450'`, `make reset POSE='2.0 1.0 1.57'`. It also runs the checks in `.utils/`: `make pose-rate WINDOW=5`, `make scan-compare`.
+
 ## Typical session
 
 ```bash
