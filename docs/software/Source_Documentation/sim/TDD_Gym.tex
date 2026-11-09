@@ -45,7 +45,7 @@ This document defines how the simulator stands in for the car: what the gym comp
 \dec\ agreed \quad \planned\ decided, not built yet \quad \deferred\ designed, built only when its trigger comes (Open Items) \quad \prop\ proposed, waiting for the team's confirmation \quad \tbd\ open \quad [MEASURE] replace with a measurement on the car \quad [VERIFY] check against the real driver or firmware.
 
 \begin{caveat}
-\textbf{Today versus target.} Built today: ROS~2 Humble, f1tenth\_gym and f1tenth\_gym\_ros \code{dev-humble} pinned by \code{GYM\_REF} and \code{GYM\_ROS\_REF} in \code{docker/ros/Dockerfile}, \code{polimi\_sim} in this repo with the LiDAR, actuation, odometry and teleop models, walled tracks, and \code{ackermann\_mux} inside \code{sim\_car.launch.py}. Planned, in this order: the Jazzy migration (\code{TDD\_F1tenth}, Jazzy migration: the JAX gym \code{dev-jax}, the bridge \code{dev-jazzy}, \code{polimi\_sim} in our fork \code{f1tenth\_gym\_polimi}), then the room world with a taped track, the camera and the track monitor. Planned parts are marked \planned. The IMU, the localization monitor and some camera and world extras are deferred until a decision needs them (S-12 to S-15).
+\textbf{Today versus target.} Built today: ROS~2 Humble, f1tenth\_gym and f1tenth\_gym\_ros \code{dev-humble} pinned by \code{GYM\_REF} and \code{GYM\_ROS\_REF} in \code{docker/ros/Dockerfile}, \code{polimi\_sim} in this repo with the LiDAR, actuation, odometry and teleop models, walled tracks, and \code{ackermann\_mux} inside \code{sim\_car.launch.py}. Planned, in this order: the camera's replay sources (video, stream, bag), which need no gym; the Jazzy migration (\code{TDD\_F1tenth}, Jazzy migration: the JAX gym \code{dev-jax}, the bridge \code{dev-jazzy}, \code{polimi\_sim} in our fork \code{f1tenth\_gym\_polimi}), then the room world with a taped track, the drawn camera and the track monitor. Planned parts are marked \planned. The IMU, the localization monitor and some camera and world extras are deferred until a decision needs them (S-12 to S-15).
 \end{caveat}
 
 % ============================================================================
@@ -96,7 +96,7 @@ f1tenth\_gym & Physics: single-track model, collisions, ray caster & Python API 
 \code{actuation\_model} & The VESC and servo: delays, rates, limits, timeout & \code{/ackermann\_cmd} \arrowto\ \code{/sim/drive}, \code{/sim/steering\_command} \\
 \code{teleop\_bridge} & Keyboard and Foxglove teleop into the mux & \code{/cmd\_vel} \arrowto\ \code{/teleop} \\
 \code{ackermann\_mux} & The car's mux and \code{mux.yaml}, until \code{TDD\_F1tenth} DEC-08 & \code{/teleop}, \code{/drive} \arrowto\ \code{/ackermann\_cmd} \\
-\code{sim\_car.launch.py} & Merges the configs, starts all of the above; \code{ideal:=true} & launch arguments \\
+\code{sim\_car.launch.py} & Merges the configs, starts all of the above; \code{ideal:=true}, \code{camera\_source:=} \planned & launch arguments \\
 \bottomrule
 \end{tabularx}
 
@@ -106,7 +106,7 @@ f1tenth\_gym & Physics: single-track model, collisions, ray caster & Python API 
 \midrule
 \endhead
 \code{make\_world} & World source file \arrowto\ every generated file (\cref{sec:world}) & CLI; run by the launch when the world is stale \\
-\code{camera\_model} & The Gemini 335L colour stream, drawn from the world (\cref{sec:camera}) & truth pose \arrowto\ \code{/camera/color/image\_raw}, \code{camera\_info}, preview, labels \\
+\code{camera\_model} & The Gemini 335L colour stream, drawn from the world or replayed from a video file or stream (\cref{sec:camera}) & truth pose or \code{camera\_uri} \arrowto\ \code{/camera/color/image\_raw}, \code{camera\_info}, preview \\
 \code{world\_publisher} & The tape as markers, for Foxglove & \code{/sim/truth/tape} \\
 \code{track\_monitor} & On-track status, laps, lateral offset, simulator health (\cref{sec:eval}) & truth pose \arrowto\ \code{/sim/eval/*}, \code{/sim/health/*}, lap CSV \\
 \code{sim\_reset} & One way to put the car somewhere & \code{/sim/reset}, \code{/sim/reset\_pose} \arrowto\ \code{/sim/initialpose}, \code{/odom\_model/reset} \\
@@ -166,11 +166,12 @@ All under \code{ros2\_ws/config/}, bind-mounted: no rebuild. At launch the map, 
 \code{car/body.yaml} & \planned\ What the gym's vehicle parameters lack: steering limits left 0.3135 and right 0.2634\,rad, track width 0.281\,m [MEASURE] & -- \\
 \code{car/camera\_mount.yaml} & \planned\ \code{base\_link}\arrowto\code{camera\_link} (x, y, z, roll, pitch, yaw); read by the car too & \code{camera\_mount:=} \\
 \code{camera/gemini\_335l.yaml} & \planned\ Profile \code{720p30} (\code{720p60} after S-06), intrinsics and \code{plumb\_bob} distortion [VERIFY] & \code{camera\_profile:=} \\
+\code{camera/<camera>.yaml} & \planned\ Calibration of a camera whose video is replayed (a phone, a webcam), as written by \code{camera\_calibration} & \code{camera\_info\_}\allowbreak\code{url:=} \\
 \code{sim/gym.yaml} & Everything else: topics, vehicle preset, opponents; \code{truth\_frame: sim\_world} \planned & -- \\
 \bottomrule
 \end{tabularx}
 
-Maps today: \code{spielberg} (default; Red Bull Ring, a closed track about 2.2\,m wide) and \code{levine} (a corridor loop); the bridge also bundles \code{levine\_obs}, \code{levine\_blocked} and \code{blank}. They keep working after the room worlds arrive; the camera, the IMU and the monitors start only on a map with a \code{world:} block.
+Maps today: \code{spielberg} (default; Red Bull Ring, a closed track about 2.2\,m wide) and \code{levine} (a corridor loop); the bridge also bundles \code{levine\_obs}, \code{levine\_blocked} and \code{blank}. They keep working after the room worlds arrive; the drawn camera, the IMU and the monitors start only on a map with a \code{world:} block. A replayed camera (\code{camera\_source:=video} or \code{bag}) needs no world and no map.
 
 Relative map paths \planned: a \code{map\_path} starting with \code{./} or \code{../} resolves against the map file's folder, so worlds need no per-user absolute paths.
 
@@ -260,13 +261,28 @@ Mirrors the car's \code{vesc\_to\_odom}: \code{/odom} (frame \code{odom}, child 
 Keyboard and Foxglove teleop speak \code{Twist}, the mux speaks Ackermann. \code{speed = linear.x}; the steering from \code{angular.z}, as \code{angular\_mode: steering\_angle} (rad, default) or \code{yaw\_rate} ($\arctan(L\omega/v)$, $|v|$ never below \code{min\_speed}); clamped to \code{max\_steer}.
 
 \subsubsection{\code{camera\_model}}\label{sec:camera}
-\planned\ The Gemini 335L colour stream as \code{orbbec\_camera} publishes it, with its default camera name \code{camera}.
+\planned\ The Gemini 335L colour stream as \code{orbbec\_camera} publishes it, with its default camera name \code{camera}. The frames come from one of three sources, chosen with \code{camera\_source:=}; each publishes the same topics, frames and mount TF, so line detection cannot tell them apart.
+
+\begin{tabularx}{\textwidth}{@{}L{1.6cm} L{4.6cm} Y@{}}
+\toprule
+\hd{Source} & \hd{Frames} & \hd{Runs with} \\
+\midrule
+\code{render} & Drawn from the world at the truth pose (below). Default on a map with a \code{world:} block. Closed loop. & The whole simulator \\
+\code{video} & A video file or a live stream: \code{camera\_uri:=} is a file path or an RTSP or HTTP URL, read by the same \code{cv2.VideoCapture} call. A file plays at its recorded frame rate; a stream as frames arrive; stamped on arrival. \code{camera\_info} from \code{camera\_info\_url:=}; a frame whose size differs from it stops the node. & The camera source, the mount TF and \code{foxglove\_bridge} only \\
+\code{bag} & The launch runs \code{ros2 bag play <camera\_uri> --clock} in place of \code{camera\_model}, with the topics, \code{camera\_info} and TF as recorded on the car. If the bag holds only \code{image\_raw/compressed}, the launch adds \code{image\_transport republish} to restore \code{image\_raw}. & As \code{video}, with \code{use\_sim\_time:=true} for every node it starts \\
+\bottomrule
+\end{tabularx}
+
 \begin{itemize}
+  \item \textbf{Replay is open loop:} video and bag frames do not follow the simulated car, so those sources start no gym, models or mux, and only the stack's line detection runs on them, not path following. They test detection on the real tape and the real floor, which the drawing cannot show (S-10).
+  \item \textbf{Replay frames:} without \code{/odom}, \code{video} gives the path in \code{base\_link} only. A path in \code{odom} (RASD OI-02) needs a bag that also holds \code{/tf}, \code{/tf\_static} and \code{/odom}. The bag keeps the driver's encoding (YUYV on the car), so \code{polimi\_lines} converts through \code{cv\_bridge}.
+  \item \textbf{Live camera on the Mac:} Docker Desktop has no USB passthrough, so a webcam or phone streams from the host (for example \code{ffmpeg} to RTSP) and \code{video} reads the URL.
+  \item \textbf{Order:} \code{video} and \code{bag} need neither the gym nor a world, so they are built first, on today's images, ahead of the Jazzy migration (S-05); \code{render} follows with the room worlds.
   \item \textbf{Drawing:} every visible thing is a flat polygon (floor, tape in chunks of at most 1\,m that never overlap, wall panels, every prism face). Per frame: camera pose $=$ truth (rear axle) $\circ$ \code{camera\_mount.yaml} $\circ$ the colour optical frame; clip to the view, project with the intrinsics, fill far to near with OpenCV, simple distance shading; lens distortion with one precomputed remap, so the factory calibration (\code{plumb\_bob}) can be pasted in.
   \item \textbf{Profile:} \code{720p30}, colour 1280\x720 in YUYV on the car; the car's launch pins the same preset. \code{720p60} is added once the 335L is shown to give it in YUYV (S-06).
   \item \textbf{Output:} \code{/camera/color/image\_raw} (\code{rgb8}, raw, never compressed for perception) and \code{camera\_info} with the drawing's intrinsics; reliable QoS, keep last 10; stamped at the middle of exposure [VERIFY]; drawn at the truth pose interpolated at the stamp. No noise, blur, latency or dropped frames.
-  \item \textbf{Preview:} \code{/camera/color/image\_raw/compressed} (JPEG, 10\,Hz, half size), encoded only while someone subscribes. Never open the raw image in Foxglove: it pushes 83\,MB/s through \code{foxglove\_bridge}.
-  \item \deferred\ (S-14): a class-label image for scoring line detectors, the \code{rational\_polynomial} model, the car's nose in the image, colour randomisation.
+  \item \textbf{Preview:} \code{/camera/color/image\_raw/compressed} (JPEG, 10\,Hz, half size), encoded only while someone subscribes, for every source. Never open the raw image in Foxglove: it pushes 83\,MB/s through \code{foxglove\_bridge}.
+  \item \deferred\ (S-14): a class-label image for tuning line segmentation pixel by pixel, the \code{rational\_polynomial} model, the car's nose in the image, colour randomisation. Line detection itself is scored on its path by \code{track\_monitor} (\cref{sec:eval}).
   \item \textbf{Budget:} at most 15\,ms per frame at \code{720p30} on the M4 Pro, on its own thread.
   \item \textbf{Tools:} \code{render\_frame} draws a frame without ROS for a given world and pose; \code{--footprint} reports the floor area seen and where both lines come into view, to choose the camera mount (S-07).
 \end{itemize}
@@ -277,7 +293,8 @@ Keyboard and Foxglove teleop speak \code{Twist}, the mux speaks Ackermann. \code
 \subsubsection{Evaluation}\label{sec:eval}
 \planned\ From the truth only; the stack never reads it.
 \begin{itemize}
-  \item \textbf{\code{track\_monitor}:} progress along the centre line, tracked within a window so a hairpin or a chicane cannot jump it to the other part of the track; a lap counts only after all checkpoints (default 10) in order; signed lateral offset of the CoG; off track by DEC-14; collisions per lap; a lap with a collision or a jump is invalid. Topics \code{/sim/eval/} \code{on\_track}, \code{lateral\_offset}, \code{progress}, \code{lap}, \code{lap\_time}, \code{collisions}; one CSV line per lap in \code{\textasciitilde/ws/runs/} (time, valid, maximum offset, time off track).
+  \item \textbf{\code{track\_monitor}:} progress along the centre line, tracked within a window so a hairpin or a chicane cannot jump it to the other part of the track; a lap counts only after all checkpoints (default 10) in order; signed lateral offset of the CoG; off track by DEC-14; collisions per lap; a lap with a collision or a jump is invalid. Topics \code{/sim/eval/} \code{on\_track}, \code{lateral\_offset}, \code{progress}, \code{lap}, \code{lap\_time}, \code{collisions}; one CSV line per lap in \code{\textasciitilde/ws/runs/} (time, valid, maximum offset, time off track, mean path error).
+  \item \textbf{Line detection score} (\code{track\_monitor}, \code{render} only): each path from line detection goes to \code{base\_link} through the stack's TF at the path's stamp, then to \code{sim\_world} through the truth pose at the same stamp, so odometry drift cancels and the score holds whether OI-02 picks \code{base\_link} or \code{odom}. The distance of its points to the tape centre line gives \code{/sim/eval/path\_error\_mean} and \code{path\_error\_max} (m). The path must carry the image's stamp, or latency enters the score. Replay has no truth: there, detection is judged by eye in Foxglove.
   \item \textbf{Simulator health:} \code{/sim/health/physics\_rate} (distinct truth poses per second while moving, expected 100) and \code{odom\_rate} (expected 250), with a warning below 95\,\%, so rendering that starves the gym shows.
   \item \textbf{\code{localization\_monitor}} \deferred\ (S-13), with option B: the stack's \code{map}\arrowto\code{base\_link} against the truth after a fitted SE(2) alignment, errors per lap and per speed bin. It would score AC-V2-B in the simulator.
   \item \code{ros2\_ws/runs/}, git-ignored, is bind-mounted at \code{\textasciitilde/ws/runs} in every image.
@@ -311,7 +328,7 @@ Still there in ideal mode: the 40\,Hz scan with rotating-sensor time fields and 
 World & a track bounded by walls & today the same; \planned\ a room with furniture and a taped loop on the floor & the room \\
 \code{/scan} & 250\,Hz, all beams at one instant, frame \code{ego\_racecar/laser} & 40\,Hz, rotating-sensor timing and motion distortion, frame \code{laser}; \planned\ the room's slice at laser height, tape invisible & SL450 driver \\
 Scan errors & Gaussian noise & noise, dropouts, grazing loss, 15\,m low-reflectivity limit, mixed pixels & real \\
-Camera & none & \planned\ the 335L's colour stream, topics and geometry, drawn without imperfections & Gemini 335L \\
+Camera & none & \planned\ the 335L's colour stream, topics and geometry, drawn without imperfections; or a replayed video, stream or bag, open loop & Gemini 335L \\
 IMU & none & \deferred\ planar motion, lever arm, noise and bias (S-12) & Gemini 335L IMU \\
 Command path & \code{/drive} straight into physics, held forever & \code{/drive} \arrowto\ \code{ackermann\_mux} \arrowto\ \code{actuation\_model} & mux \arrowto\ VESC \\
 Actuation & ideal & command delay, VESC timeout, servo delay and rate, accel and brake limits & VESC, servo \\
@@ -332,7 +349,7 @@ The stack may use \code{/scan}, \code{/odom}, the camera and IMU topics, TF \cod
 \endhead
 \code{/scan} & \code{LaserScan}, frame \code{laser}, 40\,Hz & out, \code{lidar\_model} \\
 \code{/odom} & \code{Odometry}, frame \code{odom}, 50\,Hz & out, \code{odom\_model} \\
-\code{/camera/color/image\_raw}, \code{camera\_info} & \planned\ \code{Image} \code{rgb8}, \code{CameraInfo}; 30\,Hz & out, \code{camera\_model} \\
+\code{/camera/color/image\_raw}, \code{camera\_info} & \planned\ \code{Image} \code{rgb8}, \code{CameraInfo}; 30\,Hz & out, \code{camera\_model} or the bag \\
 \code{/camera/color/}\allowbreak\code{image\_raw/compressed} & \planned\ \code{CompressedImage}, preview & out, only while subscribed \\
 \code{/drive} & \code{AckermannDriveStamped} & in, autonomy, mux priority 10 \\
 \code{/teleop} & \code{AckermannDriveStamped} & in, mux priority 100, from \code{teleop\_bridge} \\
@@ -362,6 +379,7 @@ Every pose the simulator takes or gives (\code{sx}, \code{sy}, \code{stheta}, \c
 \code{FR-SIM-002} & mux, \code{actuation\_model} timeouts; locks and AEB with \code{TDD\_F1tenth} & AC-V1-04 in the simulator \\
 \code{FR-SIM-003} & two frame trees, \code{/sim} namespace (DEC-04, DEC-10) & no stack node subscribes to \code{ego\_racecar/*}, \code{/sim/*} or looks up \code{sim\_world} \\
 \code{NFR-POR-001} & \code{arm} and \code{x86} images & the same \code{simcar} on both \\
+\code{FR-LIN-001} & \code{camera\_model} (all sources), \code{track\_monitor} & path error with \code{render}; recordings of the real tape with \code{video} and \code{bag} \\
 \code{AC-V1-02} & room world, \code{camera\_model}, \code{track\_monitor} & laps on track in the simulator, measured by \code{/sim/eval/*} \\
 \code{AC-V2-B} & \code{localization\_monitor}, deferred with option B (S-13) & fused pose against the truth per speed bin \\
 \bottomrule
@@ -376,6 +394,7 @@ Every pose the simulator takes or gives (\code{sx}, \code{sy}, \code{stheta}, \c
 \midrule
 Unit & Model logic, plain Python without ROS, on synthetic data: models, world generator, camera geometry, monitors & pytest in \code{polimi\_sim/test}; reference images from \code{render\_frame} \\
 Comparison & Each model against the gym alone & ideal mode against the normal run; \code{effects\_enabled false} against \code{/sim/scan\_unused} (they match standing still except where the gym rounds beam angles to a table) \\
+Detection & Line detection on each camera source & \code{/sim/eval/path\_error\_*} per lap with \code{render}; by eye in Foxglove on replayed recordings of the real tape \\
 Health & The simulator keeps real time & \code{/sim/health/*} $\geq$ 95\,\% with the camera on \\
 System & The stack on the simulator & AC-V1-02 and 04 in the simulator first (\code{RASD\_F1tenth}) \\
 \bottomrule
@@ -402,6 +421,7 @@ By design, also after the planned work:
 \begin{itemize}
   \item Flat floor; objects are vertical prisms standing on the floor (no slopes, no curved furniture, nothing to drive under).
   \item The camera draws flat-shaded polygons: no noise, blur, latency or dropped frames, no lighting beyond simple shading, no shadows or glare, no auto-exposure; the floor is one colour unless a photo is used; large overlapping objects can be drawn in the wrong order. No IR, depth or point cloud.
+  \item Replayed camera sources are open loop: the frames do not follow the simulated car, so they test detection only, and they have no truth to score against.
   \item No body pitch or roll: the camera pose is the static mount, and the LiDAR stays a planar slice at the nominal laser height.
   \item No IMU until S-12. Camera parameters are nominal until calibrated.
 \end{itemize}
@@ -418,7 +438,7 @@ S-01 & Deadman and e-stop stand-in & No USB passthrough on Docker Desktop for ma
 S-02 & Measured values [MEASURE] & Laser and camera mounts, actuation parameters, wheelbase, steering limits, track width, tyre patch, roof height, from the car once built. \\
 S-03 & Driver behaviour [VERIFY] & SL450: \code{stamp\_at}, \code{publish\_delay}, \code{no\_return\_value}; the VESC timeout; Gemini 335L: distortion model in \code{camera\_info}, image stamp point, IMU orientation field. \\
 S-04 & Real room and track [DECIDE] & Layout, tape, floor and room; \code{demo\_room} stands in until surveyed. \\
-S-05 & Migration & The Jazzy migration in \code{TDD\_F1tenth} comes first: the camera, IMU and room worlds are built on the JAX gym and the fork. The mux leaves with DEC-09. \\
+S-05 & Migration & The Jazzy migration in \code{TDD\_F1tenth} comes first: the drawn camera, IMU and room worlds are built on the JAX gym and the fork. The camera's \code{video} and \code{bag} sources use no gym and come first. The mux leaves with DEC-09. \\
 S-06 & Camera profile [VERIFY] & Whether the 335L gives 1280\x720 at 60\,fps in YUYV; if not, \code{720p60} is removed and everything stays on \code{720p30}. \\
 S-07 & Camera mount [DECIDE] & Height, pitch and position, chosen with \code{render\_frame --footprint} before the bracket is designed, then measured. \\
 S-09 & Laps [DECIDE] & Keep \code{track\_monitor}'s laps (ordered checkpoints, valid flag) or use the \code{dev-jazzy} bridge's \code{lap\_count} and \code{lap\_time}. \\
@@ -426,7 +446,7 @@ S-10 & Camera imperfections (optional) & Deferred: noise, blur, YUYV colour, lat
 S-11 & Contacts on the JAX gym [VERIFY] & How \code{/ego\_racecar/collision} reports a contact (one edge per contact or every step), for the truth-jump detector. \\
 S-12 & IMU model \deferred & Build \code{imu\_model} (\cref{sec:imu}) when RASD OI-08 is decided yes (EKF in the base platform) or option B is chosen. \\
 S-13 & Localization monitor \deferred & Build with option B, to score AC-V2-B in the simulator. \\
-S-14 & Camera extras \deferred & Label images, \code{rational\_polynomial}, the car's nose in the image, colour randomisation: each when a consumer exists. \\
+S-14 & Camera extras \deferred & Label images (for tuning segmentation; detection is scored on the path), \code{rational\_polynomial}, the car's nose in the image, colour randomisation: each when a consumer exists. \\
 S-15 & World extras \deferred & Height ranges and furniture macros, the surveyed tape lines (with S-04), missing stretches of tape, floor marks and photo. \\
 \bottomrule
 \end{tabularx}
