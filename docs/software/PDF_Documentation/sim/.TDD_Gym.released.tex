@@ -9,7 +9,7 @@
 \input{doc}
 \docbrand{polimi}
 
-\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The simulator: gym, bridge and car models}{0.04}{F1tenth PoliMI team}
+\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The simulator: gym, bridge and car models}{0.05}{F1tenth PoliMI team}
 \docclassification{Public}
 
 \newcommand{\prop}{\target{Proposed}}
@@ -22,6 +22,7 @@
 0.02 & 2026-11-08 & F1tenth PoliMI team & Whole simulator design: the Jazzy and JAX gym target, the room world with a taped track, camera, IMU, evaluation monitors, the \code{/sim} namespace and truth frame, the config overlay; this document is the simulator's design home; steering limits \\
 0.03 & 2026-11-09 & F1tenth PoliMI team & Right-sized: IMU, localization monitor, camera and world extras deferred (S-12 to S-15), objects of one height, simpler off-track rule (DEC-14); camera sources \code{render} and \code{bag}, bag replay needs no gym and comes first; line detection scored on its path against the tape centre line \\
 0.04 & 2026-11-09 & F1tenth PoliMI team & Plan review: replayed images converted by their encoding with NumPy, never \code{cv\_bridge} in Python (\code{TDD\_F1tenth} DEC-02) \\
+0.05 & 2026-11-09 & F1tenth PoliMI team & Plan review: the Jazzy migration comes first, then bag replay; car bags are recorded and replayed on Jazzy \\
 }
 
 % ============================================================================
@@ -47,7 +48,7 @@ This document defines how the simulator stands in for the car: what the gym comp
 \dec\ agreed \quad \planned\ decided, not built yet \quad \deferred\ designed, built only when its trigger comes (Open Items) \quad \prop\ proposed, waiting for the team's confirmation \quad \tbd\ open \quad [MEASURE] replace with a measurement on the car \quad [VERIFY] check against the real driver or firmware.
 
 \begin{caveat}
-\textbf{Today versus target.} Built today: ROS~2 Humble, f1tenth\_gym and f1tenth\_gym\_ros \code{dev-humble} pinned by \code{GYM\_REF} and \code{GYM\_ROS\_REF} in \code{docker/ros/Dockerfile}, \code{polimi\_sim} in this repo with the LiDAR, actuation, odometry and teleop models, walled tracks, and \code{ackermann\_mux} inside \code{sim\_car.launch.py}. Planned, in this order: the camera's bag replay, which needs no gym; the Jazzy migration (\code{TDD\_F1tenth}, Jazzy migration: the JAX gym \code{dev-jax}, the bridge \code{dev-jazzy}, \code{polimi\_sim} in our fork \code{f1tenth\_gym\_polimi}), then the room world with a taped track, the drawn camera and the track monitor. Planned parts are marked \planned. The IMU, the localization monitor and some camera and world extras are deferred until a decision needs them (S-12 to S-15).
+\textbf{Today versus target.} Built today: ROS~2 Humble, f1tenth\_gym and f1tenth\_gym\_ros \code{dev-humble} pinned by \code{GYM\_REF} and \code{GYM\_ROS\_REF} in \code{docker/ros/Dockerfile}, \code{polimi\_sim} in this repo with the LiDAR, actuation, odometry and teleop models, walled tracks, and \code{ackermann\_mux} inside \code{sim\_car.launch.py}. Planned, in this order: the Jazzy migration (\code{TDD\_F1tenth}, Jazzy migration: the JAX gym \code{dev-jax}, the bridge \code{dev-jazzy}, \code{polimi\_sim} in our fork \code{f1tenth\_gym\_polimi}), then the camera's bag replay, which needs no gym or world, then the room world with a taped track, the drawn camera and the track monitor. Planned parts are marked \planned. The IMU, the localization monitor and some camera and world extras are deferred until a decision needs them (S-12 to S-15).
 \end{caveat}
 
 % ============================================================================
@@ -276,7 +277,7 @@ Keyboard and Foxglove teleop speak \code{Twist}, the mux speaks Ackermann. \code
 \begin{itemize}
   \item \textbf{Replay is open loop:} bag frames do not follow the simulated car, so this source starts no gym, models or mux, and only the stack's line detection runs on them, not path following. They test detection on the real tape and the real floor, which the drawing cannot show (S-10).
   \item \textbf{Replay frames:} a bag from the camera alone has no \code{/odom}, so the path stays in \code{base\_link}. A path in \code{odom} (RASD OI-02) needs a bag from the car that also holds \code{/tf}, \code{/tf\_static} and \code{/odom}. The bag keeps the driver's encoding (YUYV on the car [VERIFY]), so \code{polimi\_lines} converts by the image's \code{encoding} field with NumPy, never \code{cv\_bridge} in Python (\code{TDD\_F1tenth} DEC-02).
-  \item \textbf{Order:} \code{bag} needs neither the gym nor a world, so it is built first, on today's images, ahead of the Jazzy migration (S-05); \code{render} follows with the room worlds.
+  \item \textbf{Order:} after the Jazzy migration (S-05), \code{bag} comes first, as it needs neither the gym nor a world; \code{render} follows with the room worlds. Bags from the car are recorded on Jazzy, so they are replayed on Jazzy.
   \item \textbf{Drawing:} every visible thing is a flat polygon (floor, tape in chunks of at most 1\,m that never overlap, wall panels, every prism face). Per frame: camera pose $=$ truth (rear axle) $\circ$ \code{camera\_mount.yaml} $\circ$ the colour optical frame; clip to the view, project with the intrinsics, fill far to near with OpenCV, simple distance shading; lens distortion with one precomputed remap, so the factory calibration (\code{plumb\_bob}) can be pasted in.
   \item \textbf{Profile:} \code{720p30}, colour 1280\x720 in YUYV on the car; the car's launch pins the same preset. \code{720p60} is added once the 335L is shown to give it in YUYV (S-06).
   \item \textbf{Output:} \code{/camera/color/image\_raw} (\code{rgb8}, raw, never compressed for perception) and \code{camera\_info} with the drawing's intrinsics; reliable QoS, keep last 10; stamped at the middle of exposure [VERIFY]; drawn at the truth pose interpolated at the stamp. No noise, blur, latency or dropped frames.
@@ -437,7 +438,7 @@ S-01 & Deadman and e-stop stand-in & No USB passthrough on Docker Desktop for ma
 S-02 & Measured values [MEASURE] & Laser and camera mounts, actuation parameters, wheelbase, steering limits, track width, tyre patch, roof height, from the car once built. \\
 S-03 & Driver behaviour [VERIFY] & SL450: \code{stamp\_at}, \code{publish\_delay}, \code{no\_return\_value}; the VESC timeout; Gemini 335L: distortion model in \code{camera\_info}, image stamp point, IMU orientation field. \\
 S-04 & Real room and track [DECIDE] & Layout, tape, floor and room; \code{demo\_room} stands in until surveyed. \\
-S-05 & Migration & The Jazzy migration in \code{TDD\_F1tenth} comes first: the drawn camera, IMU and room worlds are built on the JAX gym and the fork. The camera's \code{bag} source uses no gym and comes first. The mux leaves with DEC-09. \\
+S-05 & Migration & The Jazzy migration in \code{TDD\_F1tenth} comes first: the drawn camera, IMU and room worlds are built on the JAX gym and the fork. The camera's \code{bag} source follows it, before the room worlds. The mux leaves with DEC-09. \\
 S-06 & Camera profile [VERIFY] & Whether the 335L gives 1280\x720 at 60\,fps in YUYV; if not, \code{720p60} is removed and everything stays on \code{720p30}. \\
 S-07 & Camera mount [DECIDE] & Height, pitch and position, chosen with \code{render\_frame --footprint} before the bracket is designed, then measured. \\
 S-09 & Laps [DECIDE] & Keep \code{track\_monitor}'s laps (ordered checkpoints, valid flag) or use the \code{dev-jazzy} bridge's \code{lap\_count} and \code{lap\_time}. \\
