@@ -437,7 +437,7 @@ S-01 & Deadman and e-stop stand-in & No USB passthrough on Docker Desktop for ma
 S-02 & Measured values [MEASURE] & Laser and camera mounts, actuation parameters, wheelbase, steering limits, track width, tyre patch, roof height, from the car once built. \\
 S-03 & Driver behaviour [VERIFY] & SL450: \code{stamp\_at}, \code{publish\_delay}, \code{no\_return\_value}; the VESC timeout; Gemini 335L: distortion model in \code{camera\_info}, image stamp point, IMU orientation field. \\
 S-04 & Real room and track [DECIDE] & Layout, tape, floor and room; \code{demo\_room} stands in until surveyed. \\
-S-05 & Migration & The Jazzy migration in \code{TDD\_F1tenth} comes first: the drawn camera, IMU and room worlds are built on the JAX gym and the fork, and the camera's \code{bag} source in the fork too (9 Nov 2026). The order is the \code{TDD\_F1tenth} plan. The mux leaves with DEC-09. \\
+S-05 & Migration & The Jazzy migration in \code{TDD\_F1tenth} is done (9 Nov 2026): the drawn camera, IMU and room worlds are built on the JAX gym in the fork, and the camera's \code{bag} source in the fork too. The order is the \code{TDD\_F1tenth} plan. The mux leaves with DEC-09. \\
 S-06 & Camera profile [VERIFY] & Whether the 335L gives 1280\x720 at 60\,fps in YUYV; if not, \code{720p60} is removed and everything stays on \code{720p30}. \\
 S-07 & Camera mount [DECIDE] & Height, pitch and position, chosen with \code{render\_frame --footprint} before the bracket is designed, then measured. \\
 S-09 & Laps [DECIDE] & Keep \code{track\_monitor}'s laps (ordered checkpoints, valid flag) or use the \code{dev-jazzy} bridge's \code{lap\_count} and \code{lap\_time}. \\
