@@ -10,7 +10,7 @@
 \input{doc}
 \docbrand{polimi}
 
-\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The car: stack, car interface and deployment}{0.03}{F1tenth PoliMI team}
+\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The car: stack, car interface and deployment}{0.04}{F1tenth PoliMI team}
 \docclassification{Public}
 
 \newcommand{\prop}{\target{Proposed}}
@@ -19,7 +19,8 @@
 \docfrontmatter{
 0.01 & 2026-10-25 & F1tenth PoliMI team & Initial draft from the car-interface design proposal and the runbooks; \code{car.md} and the hardware studies folded in (\cref{sec:hwsel}) \\
 0.02 & 2026-11-08 & F1tenth PoliMI team & Review of v0.01: DEC-08 follows the Jazzy migration; DEC-12 allows our packages in a fork's own folder; JetPack 7.2.1 on the car (DEC-13); Jazzy migration summarised (\cref{sec:migration}); stop-test chain, steering limits (T-12) and the \code{/joy} stand-in owner; references to working notes removed \\
-0.03 & 2026-11-09 & F1tenth PoliMI team & Jazzy migration step 1 done: the images run on \code{ros:jazzy} with the DEC-02 packages and \code{f1tenth\_system} on \code{jazzy-polimi}; today-versus-target, deployment and repositories updated \\
+0.03 & 2026-11-09 & F1tenth PoliMI team & Controllers and tuning topics (PID and Pure Pursuit, FR-PTH-009); camera calibration procedure in the car bringup (FR-DRV-005, T-06); line detection on replayed camera bags; IMU model deferred until OI-08 \\
+0.04 & 2026-11-09 & F1tenth PoliMI team & Jazzy migration step 1 done: the images run on \code{ros:jazzy} with the DEC-02 packages and \code{f1tenth\_system} on \code{jazzy-polimi}; today-versus-target, deployment and repositories updated \\
 }
 
 % ============================================================================
@@ -367,7 +368,7 @@ Python & system Python of the image; \code{uv} on the host & house rule \\
   \item \textbf{Jazzy migration} (\cref{sec:migration}): Jazzy images, the JAX gym, the simulator fork as a submodule.
   \item \textbf{\code{polimi\_bringup}:} the car interface README, \code{stack.launch.py}, \code{sim.launch.py}, \code{common.launch.py}, our \code{mux.yaml}; \code{simcar} calls \code{hw:=sim}; with DEC-08 the mux leaves the simulator fork.
   \item \textbf{Safety:} OI-09 locks and AEB, with the \code{/joy} stand-in (T-01), tested in the simulator.
-  \item \textbf{Logic:} mapping and localization, line detection (first tuned offline on phone frames of the real tape, then on replayed bags, \code{TDD\_Gym}), path following (PID and Pure Pursuit, error topics), as the base platform needs.
+  \item \textbf{Logic:} mapping and localization, line detection (on replayed camera bags of the real tape, \code{TDD\_Gym}), path following (PID and Pure Pursuit, error topics), as the base platform needs.
   \item \textbf{Car bringup}, when the car is built: \code{car.launch.py}, udev rules, measured configs, the camera calibration procedure, safety tests on the car.
   \item \textbf{Advanced topic} \target{V2}, once OI-01 is decided.
 \end{enumerate}
