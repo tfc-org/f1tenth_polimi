@@ -9,7 +9,7 @@
 \input{doc}
 \docbrand{polimi}
 
-\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The simulator: gym, bridge and car models}{0.06}{F1tenth PoliMI team}
+\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The simulator: gym, bridge and car models}{0.07}{F1tenth PoliMI team}
 \docclassification{Public}
 
 \newcommand{\prop}{\target{Proposed}}
@@ -24,6 +24,7 @@
 0.04 & 2026-11-09 & F1tenth PoliMI team & Plan review: replayed images converted by their encoding with NumPy, never \code{cv\_bridge} in Python (\code{TDD\_F1tenth} DEC-02) \\
 0.05 & 2026-11-09 & F1tenth PoliMI team & Plan review: the Jazzy migration comes first, then bag replay; car bags are recorded and replayed on Jazzy \\
 0.06 & 2026-11-09 & F1tenth PoliMI team & The images run ROS~2 Jazzy (migration step 1); the camera's \code{bag} source is built in the fork after the migration. Plan review: bench bags carry the stand's camera pose as a static TF; the build order is kept in the \code{TDD\_F1tenth} plan \\
+0.07 & 2026-11-09 & F1tenth PoliMI team & Jazzy migration done for the simulator: JAX gym \code{dev-jax}, our fork of the \code{dev-jazzy} bridge as a submodule with \code{polimi\_sim} inside, one \code{SegmentScanSimulator2D} per LiDAR block, rear-axle poses, labelled defaults and the config overlay (DEC-15) \\
 }
 
 % ============================================================================
@@ -49,7 +50,7 @@ This document defines how the simulator stands in for the car: what the gym comp
 \dec\ agreed \quad \planned\ decided, not built yet \quad \deferred\ designed, built only when its trigger comes (Open Items) \quad \prop\ proposed, waiting for the team's confirmation \quad \tbd\ open \quad [MEASURE] replace with a measurement on the car \quad [VERIFY] check against the real driver or firmware.
 
 \begin{caveat}
-\textbf{Today versus target.} Built today: ROS~2 Jazzy images with the Humble-era f1tenth\_gym and f1tenth\_gym\_ros \code{dev-humble} pinned by \code{GYM\_REF} and \code{GYM\_ROS\_REF} in \code{docker/ros/Dockerfile}, \code{polimi\_sim} in this repo with the LiDAR, actuation, odometry and teleop models, walled tracks, and \code{ackermann\_mux} inside \code{sim\_car.launch.py}. Planned: the rest of the Jazzy migration (\code{TDD\_F1tenth}, Jazzy migration: the JAX gym \code{dev-jax}, the bridge \code{dev-jazzy}, \code{polimi\_sim} in our fork \code{f1tenth\_gym\_polimi}), then the camera's bag replay, the room world with a taped track, the drawn camera and the track monitor, in the order of the \code{TDD\_F1tenth} plan. Planned parts are marked \planned. The IMU, the localization monitor and some camera and world extras are deferred until a decision needs them (S-12 to S-15).
+\textbf{Today versus target.} Built today: ROS~2 Jazzy images; f1tenth\_gym \code{dev-jax} pinned by \code{GYM\_REF} in \code{docker/ros/Dockerfile}; our fork \code{f1tenth\_gym\_polimi} of the \code{dev-jazzy} bridge as the submodule \code{ros2\_ws/src/f1tenth\_gym\_ros}, with \code{polimi\_sim} inside (the LiDAR, actuation, odometry and teleop models, labelled default configs and the config overlay); walled tracks; and \code{ackermann\_mux} inside \code{sim\_car.launch.py}. Planned, in the build order of the \code{TDD\_F1tenth} plan: the camera's bag replay, the room world with a taped track, the drawn camera and the track monitor. Planned parts are marked \planned. The IMU, the localization monitor and some camera and world extras are deferred until a decision needs them (S-12 to S-15).
 \end{caveat}
 
 % ============================================================================
@@ -120,9 +121,7 @@ truth-jump detector & Tells resets (teleports) from wall contacts, so no model i
 \captionof{table}{Planned components.}\label{tab:planned}
 
 \subsection{Deployment View}
-The simulator runs in the \code{arm} (Apple Silicon) and \code{x86} images only, never on the car (\code{jet}). Today the gym and the bridge are cloned at fixed commits during the image build, and \code{polimi\_sim} and the configs are bind-mounted like the rest of the workspace.
-
-After the Jazzy migration \planned: the fork \code{f1tenth\_gym\_polimi} (branch \code{dev-jazzy-polimi}) is the submodule \code{ros2\_ws/src/f1tenth\_gym\_ros} and is built with \code{colcon} in the workspace; \code{polimi\_sim} is a second package inside it, so the build and rosdep name its path explicitly. The JAX gym is pip-installed in the image and runs on the CPU (\code{JAX\_PLATFORMS=cpu}). The \code{jet} image builds neither. The fork needs \code{f1tenth\_system} next to it for \code{ackermann\_mux} until DEC-09.
+The simulator runs in the \code{arm} (Apple Silicon) and \code{x86} images only, never on the car (\code{jet}). The JAX gym is pip-installed in the image at a fixed commit and runs on the CPU (\code{JAX\_PLATFORMS=cpu}). The fork \code{f1tenth\_gym\_polimi} (branch \code{dev-jazzy-polimi}) is the submodule \code{ros2\_ws/src/f1tenth\_gym\_ros}, bind-mounted and built with \code{colcon} in the workspace like the rest; \code{polimi\_sim} is a second package inside it, so the build and rosdep name its path explicitly. The \code{jet} image builds neither. The fork needs \code{f1tenth\_system} next to it for \code{ackermann\_mux} until DEC-09.
 
 Foxglove connects on \code{ws://localhost:8765}; RViz through the optional noVNC container. Give the container at least 6 CPUs in Docker Desktop once the camera runs.
 
@@ -136,19 +135,19 @@ IDs here are local to this document; \code{TDD\_F1tenth}'s are written with its 
 \endhead
 DEC-01 & Model nodes between gym and stack; the gym stays physics and truth \dec & The stack meets the car's rates, frames and errors without changing the gym. Each model can be switched off (ideal mode) to see what it changes. \\
 DEC-02 & Each thing is defined once, in its own file \dec & Map, laser, mount and gym settings are chosen independently and merged at launch. The gym's own LiDAR takes its beams, angles, ranges and mount from the same laser and mount files, so the laser is never described twice. \\
-DEC-03 & The gym's LiDAR stays on, noise-free, on \code{/sim/scan\_unused} \dec & Today its wall collision check runs on that scan; the JAX gym checks contact against wall segments instead. The stack's \code{/scan} comes only from \code{lidar\_model}. \\
+DEC-03 & The gym's LiDAR stays on, noise-free, on \code{/sim/scan\_unused} \dec & The JAX gym checks wall contact against wall segments, not on this scan; the scan is kept to compare against. The stack's \code{/scan} comes only from \code{lidar\_model}. \\
 DEC-04 & Two frame trees: truth apart from the estimate \dec & The truth tree is where the car is; \code{odom}\arrowto\code{base\_link}\arrowto\code{laser} is where it thinks it is. Nothing joins them except SLAM, localization or the debug option. Today the truth hangs from \code{map}, which SLAM and AMCL also use; DEC-10 separates them. \\
-DEC-05 & \code{lidar\_model} ray-casts with the gym's own caster \dec & From the truth pose composed with the mount, in blocks along the sweep, so motion distortion comes from real poses; the map matches the gym's. On the JAX gym, one exact ray--segment scanner (\code{SegmentScanSimulator2D}) per block, built at start \planned. \\
+DEC-05 & \code{lidar\_model} ray-casts with the gym's own caster \dec & From the truth pose composed with the mount, in blocks along the sweep, so motion distortion comes from real poses; the map matches the gym's. On the JAX gym, one exact ray--segment scanner (\code{SegmentScanSimulator2D}) per block, built and compiled at start; the blocks together give exactly the gym's own full scan. \\
 DEC-06 & Ideal mode is the same graph with overrides \dec & Same nodes, topics and frames; only the imperfections go. The overrides live in \code{sim\_car.launch.py} (\code{IDEAL\_*}) and win over the parameter files. \\
 DEC-07 & Controllers read beam angles from each \code{LaserScan} \dec & \code{angle\_min + i * angle\_increment}, never hard-coded indices, so the same code runs with any laser and on the car. \\
-DEC-08 & \code{sim/gym.yaml} is the bridge's \code{config/sim.yaml} at the pinned commit, minus our keys \dec & Re-copied when the bridge is bumped; its header lists what differs. After the migration it is one of the fork's default configs (DEC-15). \\
+DEC-08 & \code{sim/gym.yaml} is the bridge's \code{config/sim.yaml} at the pinned commit, minus our keys \dec & Re-copied when the bridge is bumped; its header lists what differs. It is one of the fork's default configs (DEC-15). \\
 DEC-09 & The mux leaves the simulator after the Jazzy migration \prop & Follows \code{TDD\_F1tenth} DEC-08: the fork then runs from a bare clone, the stack's common layer owns the mux, and \code{teleop\_bridge} publishes on \code{teleop\_topic}. Through the migration the mux stays, so the simulator always has one. \\
 DEC-10 & The simulator's own names live under \code{/sim} and \code{sim\_world} \planned & The truth frame becomes \code{sim\_world} (a fork parameter \code{truth\_frame}, default \code{map} as upstream); the gym's map is remapped to \code{/sim/map} and its reset input to \code{/sim/initialpose}. \code{/map}, \code{map} and \code{/initialpose} then belong to SLAM and AMCL, as on the car: giving AMCL an initial pose no longer teleports the car, and the stack cannot reach the truth through TF. The simulator starts Foxglove itself, outside the remaps (fork launch argument \code{start\_foxglove}). \\
 DEC-11 & One world source file generates everything the simulator needs \planned & Room, objects with a height, tape and start in one hand-edited file; a generator writes the collision map, the LiDAR slice, the camera scene and the tape truth from it, so a layout change is one edit and one command, and the LiDAR, the collisions and the camera never disagree. \\
 DEC-12 & The camera draws flat-shaded polygons with OpenCV, with no imperfections \planned & What closed-loop work needs is correct geometry (the real intrinsics and mount) and the driver's topics and timing. A per-pixel ray tracer, off-screen OpenGL, Gazebo and photoreal simulators were considered: slower, new dependencies or no Apple Silicon. Robustness to real images is developed on camera bags of the real tape; imperfections are added only when a real-versus-simulated comparison shows the stack needs one (S-10). \\
 DEC-13 & The IMU is planar truth motion plus lever arm, noise and bias \deferred & Only the \code{odom} EKF (RASD OI-08), option B and exercise 5 use it, so it is built when one of them is decided (S-12). Body pitch and roll are not simulated. \\
 DEC-14 & Leaving the track is measured, not felt \planned & Tape stops nothing (RASD C-005), so \code{track\_monitor} scores it from the truth: off track when the CoG's lateral offset exceeds $\mathit{width}/2 + \mathit{tape\ width} + \mathit{track\ width}/2$, i.e.\ all four wheels past a tape's outer edge for a car aligned with the track. Heading is ignored: a simpler stand-in for per-wheel contact patches. \\
-DEC-15 & Default configs in the fork, measured car configs in our repo \planned & The fork ships labelled defaults (stock f1tenth vehicle, datasheet sensors), never our measured car, so it runs on its own. Our \code{ros2\_ws/config/} is passed as \code{config\_dir}; for each file the launch takes ours if present, else the default, and logs which. \\
+DEC-15 & Default configs in the fork, measured car configs in our repo \dec & The fork ships labelled defaults (stock f1tenth vehicle, datasheet sensors), never our measured car, so it runs on its own. Our \code{ros2\_ws/config/} is passed as \code{config\_dir}; for each file the launch takes ours if present, else the default, and logs which. \\
 DEC-16 & The simulator's design lives in this document \dec & One source of truth with release history; the fork's README stays short and points here (8 Nov 2026). \\
 \bottomrule
 \end{tabularx}
@@ -157,7 +156,7 @@ DEC-16 & The simulator's design lives in this document \dec & One source of trut
 \section{Data}
 % ============================================================================
 \subsection{Configuration files}
-All under \code{ros2\_ws/config/}, bind-mounted: no rebuild. At launch the map, laser, mount and gym files are merged into the config the gym gets, written to \code{/tmp/polimi\_sim/gym\_<map>\_<lidar>.yaml}.
+Each file comes from \code{config\_dir} (\code{simcar} passes \code{ros2\_ws/config/}, bind-mounted: no rebuild) if it is there, otherwise from \code{polimi\_sim}'s labelled defaults in the fork (\code{config/defaults/}, DEC-15); the launch logs where each came from. Our repo holds only the measured car's files (\code{car/laser\_mount.yaml}, \code{lidar/sl450.yaml}). At launch the map, laser, mount and gym files are merged into the config the gym gets, written to \code{/tmp/polimi\_sim/gym\_<map>\_<lidar>.yaml}.
 
 \begin{tabularx}{\textwidth}{@{}L{4.4cm} Y L{3.0cm}@{}}
 \toprule
@@ -408,7 +407,6 @@ Where the simulator still differs from the car, or simplifies. Today:
 \begin{itemize}
   \item No camera, no IMU, and no room with a taped track: the maps are tracks bounded by walls, which the project's environment no longer has (\code{RASD\_F1tenth} C-001 to C-005).
   \item The gym's map and reset input share \code{/map} and \code{/initialpose} with SLAM and AMCL, and the truth hangs from \code{map}: giving AMCL an initial pose would teleport the car. Fixed by DEC-10.
-  \item Truth pose: the gym's single-track state is at the centre of gravity, published as \code{ego\_racecar/base\_link}. \code{polimi\_sim} treats it as \code{base\_link} (the rear axle on the car): a 0.17\,m offset, gone on the \code{dev-jazzy} bridge.
   \item Steering is clamped at $\pm$0.4189\,rad; the car's servo clamp gives +0.31\,rad left and $-$0.26\,rad right, so the simulated car turns tighter than the real one (\code{TDD\_F1tenth} T-12; \code{car/body.yaml} \planned).
   \item Vehicle body parameters are the gym's \code{f1tenth} preset.
   \item The truth pose changes at 100\,Hz (the physics step). \code{lidar\_model} interpolates between steps and extrapolates up to 30\,ms past the newest, and today across resets too.

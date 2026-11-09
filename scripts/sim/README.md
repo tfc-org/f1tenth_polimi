@@ -27,7 +27,7 @@ The start scripts open Foxglove in the browser, already pointed at `ws://localho
 
 ## Details
 
-- Map: a file name in `ros2_ws/config/maps/`, default `spielberg`. `bash scripts/sim/start.real.sh levine`.
+- Map: a file name in `maps/` of `ros2_ws/config/` or, failing that, of polimi_sim's defaults (`ros2_ws/src/f1tenth_gym_ros/polimi_sim/config/defaults/`), default `spielberg`. `bash scripts/sim/start.real.sh levine`.
 - Anything after the map goes to the launch: `bash scripts/sim/start.real.sh spielberg debug_map_to_odom:=truth`.
 - The start scripts build the workspace first (`cb`): slow the first time, a few seconds afterwards.
 - `Ctrl-C` in a start script stops the simulator only; the container keeps running, so the next start is quick.

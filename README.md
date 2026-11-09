@@ -38,8 +38,9 @@ f1tenth_polimi/
 ├── ros2_ws/
 │   ├── src/
 │   │   ├── f1tenth_system/   # Submodule: drivers (our fork)
+│   │   ├── f1tenth_gym_ros/  # Submodule: the simulator (our fork: bridge + polimi_sim)
 │   │   └── polimi_*/         # Our packages
-│   ├── config/               # maps, lidar, car, sim: one file per thing, no rebuild
+│   ├── config/               # our car's measured configs (laser mount, laser), no rebuild
 │   └── maps/                 # Our own map images (none yet)
 └── scripts/              # setup_git.sh, sim/ (start, teleop, reset, stop the simulator)
 ```
@@ -63,7 +64,7 @@ Once the image is built, `bash scripts/sim/start.real.sh` does the last four lin
 
 - `setup_git.sh` fetches the submodules, except the private `Latex_Templates` (see [Contributing](CONTRIBUTING.md)), and sets `push.recurseSubmodules=check`, `submodule.recurse=true` and an `upstream` remote in the fork. Safe to re-run.
 - `HOST_UID` / `HOST_GID` (from `id -u`, `id -g`) make the container user match yours, so files created in the bind-mounted folders stay yours on the host.
-- Pick the service for your machine: `arm` Apple Silicon, `x86` PC, `jet` Orin Nano on the car. The first build takes a while (gym and gym_ros).
+- Pick the service for your machine: `arm` Apple Silicon, `x86` PC, `jet` Orin Nano on the car. The first build takes a while (the apt packages and the JAX gym).
 - Code, configs and maps are bind-mounted, so most changes need only `cb`; when to rebuild the image is in [Docker](docs/software/docker.md#rebuild).
 
 Then open Foxglove at `ws://localhost:8765` to see the track, the car and the scan. The car stands still until it gets a command: [Simulator](docs/software/simulator.md) shows how to drive it.

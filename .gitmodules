@@ -6,3 +6,7 @@
 	path = docs/Latex_Templates
 	url = https://github.com/tfc-org/Latex_Templates.git
 	update = none
+[submodule "ros2_ws/src/f1tenth_gym_ros"]
+	path = ros2_ws/src/f1tenth_gym_ros
+	url = https://github.com/tfc-org/f1tenth_gym_polimi.git
+	branch = dev-jazzy-polimi

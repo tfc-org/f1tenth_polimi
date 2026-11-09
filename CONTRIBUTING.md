@@ -18,11 +18,14 @@ Building needs `pdflatex`, `latexdiff` and the Source Serif/Sans/Code Pro fonts 
 
 ## Git and submodules
 
-The car's drivers live in a separate repository that we forked, linked here as a submodule. That keeps upstream's history intact and lets us pull their fixes, at the price of one extra commit whenever we change the fork.
+The car's drivers and the simulator live in separate repositories that we forked, linked here as submodules. That keeps upstream's history intact and lets us pull their fixes, at the price of one extra commit whenever we change a fork.
 
 - `ros2_ws/src/f1tenth_system` is a submodule: our fork `tfc-org/f1tenth_system_polimi`, branch `jazzy-polimi`.
 - Its own submodules: `vesc` (`jazzy`), `ackermann_mux` (`foxy-devel`; no Jazzy apt release, so it builds here from source), `teleop_tools` (`humble-devel`, builds on Jazzy).
-- `setup_git.sh` adds `upstream` → `f1tenth/f1tenth_system`.
+- `ros2_ws/src/f1tenth_gym_ros` is a submodule: our fork `tfc-org/f1tenth_gym_polimi`, branch `dev-jazzy-polimi`: upstream's bridge plus `polimi_sim/`.
+  - **Commit rule:** a commit touches either upstream's files or `polimi_sim/`, never both, so an upstream fix can be offered upstream as it is.
+  - **Branch rule:** fixes to upstream's code go to the fork's `dev-jazzy` (PR from a branch cut from it), then `dev-jazzy` is merged into `dev-jazzy-polimi`; our additions go to `dev-jazzy-polimi`.
+- `setup_git.sh` adds `upstream` → `f1tenth/f1tenth_system` and `f1tenth/f1tenth_gym_ros`.
 
 ### Edit the fork (two commits)
 
@@ -39,6 +42,8 @@ git commit -m "Bump f1tenth_system: ..." && git push       # 2) pointer
 
 `push.recurseSubmodules=check` blocks step 2 if step 1 wasn't pushed.
 
+The simulator works the same way: `cd ros2_ws/src/f1tenth_gym_ros`, `git switch dev-jazzy-polimi`, a commit (or a merged PR) there, then the pointer here (`git add ros2_ws/src/f1tenth_gym_ros`).
+
 ### Sync with upstream
 
 To bring in what the F1TENTH maintainers changed since our fork:
@@ -53,6 +58,18 @@ git push
 ```
 
 Then bump the pointer as in step 2.
+
+For the simulator, upstream's changes go through the fork's `dev-jazzy` first (branch rule):
+
+```bash
+cd ros2_ws/src/f1tenth_gym_ros
+git fetch upstream
+git log --oneline dev-jazzy..upstream/dev-jazzy             # preview
+git switch dev-jazzy && git merge upstream/dev-jazzy && git push
+git switch dev-jazzy-polimi && git merge dev-jazzy && git push
+```
+
+Both branches are protected, so in practice each merge is a PR on the fork. After a bump, re-check `polimi_sim/config/defaults/sim/gym.yaml` against the bridge's `config/sim.yaml` (its header lists what differs).
 
 ### Pick up someone else's bump
 

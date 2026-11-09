@@ -10,6 +10,7 @@ cd "$(git rev-parse --show-toplevel)"
 # (Plain list, not an associative array: macOS still ships bash 3.2.)
 FORKS=(
     "ros2_ws/src/f1tenth_system https://github.com/f1tenth/f1tenth_system.git"
+    "ros2_ws/src/f1tenth_gym_ros https://github.com/f1tenth/f1tenth_gym_ros.git"
 )
 
 echo "==> Fetching submodules (and their nested submodules)"
