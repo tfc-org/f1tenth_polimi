@@ -10,7 +10,7 @@
 \input{doc}
 \docbrand{polimi}
 
-\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The car: stack, car interface and deployment}{0.02}{F1tenth PoliMI team}
+\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The car: stack, car interface and deployment}{0.03}{F1tenth PoliMI team}
 \docclassification{Public}
 
 \newcommand{\prop}{\target{Proposed}}
@@ -19,6 +19,7 @@
 \docfrontmatter{
 0.01 & 2026-10-25 & F1tenth PoliMI team & Initial draft from the car-interface design proposal and the runbooks; \code{car.md} and the hardware studies folded in (\cref{sec:hwsel}) \\
 0.02 & 2026-11-08 & F1tenth PoliMI team & Review of v0.01: DEC-08 follows the Jazzy migration; DEC-12 allows our packages in a fork's own folder; JetPack 7.2.1 on the car (DEC-13); Jazzy migration summarised (\cref{sec:migration}); stop-test chain, steering limits (T-12) and the \code{/joy} stand-in owner; references to working notes removed \\
+0.03 & 2026-11-09 & F1tenth PoliMI team & Jazzy migration step 1 done: the images run on \code{ros:jazzy} with the DEC-02 packages and \code{f1tenth\_system} on \code{jazzy-polimi}; today-versus-target, deployment and repositories updated \\
 }
 
 % ============================================================================
@@ -45,7 +46,7 @@ This document defines how the car's software is built: the layers of the stack, 
 \dec\ agreed \quad \prop\ proposed, waiting for the team's confirmation \quad \target{V2} later phase \quad \tbd\ open.
 
 \begin{caveat}
-\textbf{Today versus target.} The images run ROS~2 Humble today and the drivers come from \code{humble-polimi}. Jazzy is decided (DEC-01) and the migration is planned (\cref{sec:migration}), not done. This document describes the Jazzy target; where today differs, it says so.
+\textbf{Today versus target.} The images run ROS~2 Jazzy and the drivers come from \code{jazzy-polimi}: step 1 of the Jazzy migration (\cref{sec:migration}) is done. The simulator still runs the Humble-era gym and bridge, and \code{polimi\_sim} is still in this repo, until steps 2 and 3. This document describes the Jazzy target; where today differs, it says so.
 \end{caveat}
 
 % ============================================================================
@@ -174,7 +175,7 @@ One Docker image per machine type, built from \code{docker/ros/Dockerfile}. The 
 \bottomrule
 \end{tabularx}
 
-Base image \code{ros:jazzy} on Ubuntu 24.04 (DEC-01); today \code{ros:humble}. On the car the host is JetPack 7.2.1, also Ubuntu 24.04, so the container can use the GPU (DEC-13). Middleware \code{rmw\_zenoh\_cpp}; the Zenoh router starts with the container.
+Base image \code{ros:jazzy} on Ubuntu 24.04 (DEC-01), chosen by the build argument \code{ROS\_DISTRO}. On the car the host is JetPack 7.2.1, also Ubuntu 24.04, so the container can use the GPU (DEC-13). Middleware \code{rmw\_zenoh\_cpp}; the Zenoh router starts with the container.
 
 \subsubsection{The car}
 \begin{tabularx}{\textwidth}{@{}L{3.6cm} L{3.4cm} Y@{}}
@@ -194,7 +195,7 @@ VESC 6 MkVI & USB, \code{/dev/sensors/vesc} (udev rule \tbd) & \code{vesc\_drive
 \hd{Repo (\code{tfc-org})} & \hd{Submodule path} & \hd{Holds} \\
 \midrule
 \code{f1tenth\_polimi} & -- (this repo) & Our packages, configs, maps, Docker, docs \\
-\code{f1tenth\_system\_polimi} & \code{ros2\_ws/src/f1tenth\_system} & Upstream drivers, branch \code{jazzy-polimi} (today \code{humble-polimi}) \\
+\code{f1tenth\_system\_polimi} & \code{ros2\_ws/src/f1tenth\_system} & Upstream drivers, branch \code{jazzy-polimi} \\
 \code{f1tenth\_gym\_polimi} & \code{ros2\_ws/src/f1tenth\_gym\_ros} (after the migration) & Upstream bridge plus \code{polimi\_sim}, branch \code{dev-jazzy-polimi} \\
 \bottomrule
 \end{tabularx}
