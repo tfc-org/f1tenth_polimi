@@ -9,7 +9,7 @@
 \input{doc}
 \docbrand{polimi}
 
-\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The simulator: gym, bridge and car models}{0.02}{F1tenth PoliMI team}
+\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The simulator: gym, bridge and car models}{0.03}{F1tenth PoliMI team}
 \docclassification{Public}
 
 \newcommand{\prop}{\target{Proposed}}
@@ -20,6 +20,7 @@
 \docfrontmatter{
 0.01 & 2026-10-25 & F1tenth PoliMI team & Initial draft from \code{simulator.md} and \code{polimi\_sim} \\
 0.02 & 2026-11-08 & F1tenth PoliMI team & Whole simulator design: the Jazzy and JAX gym target, the room world with a taped track, camera, IMU, evaluation monitors, the \code{/sim} namespace and truth frame, the config overlay; this document is the simulator's design home; steering limits \\
+0.03 & 2026-11-09 & F1tenth PoliMI team & Right-sized: IMU, localization monitor, camera and world extras deferred (S-12 to S-15), objects of one height, simpler off-track rule (DEC-14); camera sources \code{render} and \code{bag}, bag replay needs no gym and comes first; line detection scored on its path against the tape centre line \\
 }
 
 % ============================================================================
