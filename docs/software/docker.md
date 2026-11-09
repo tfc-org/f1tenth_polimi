@@ -88,7 +88,7 @@ Check in the container:
 python3 -c "import cv2, numpy; print(cv2.__file__, cv2.__version__, numpy.__file__, numpy.__version__)"
 ```
 
-Both paths must be under `/usr/local/`.
+Both paths must be under `/usr/local/`. On the Jazzy images (9 Nov 2026): `cv2` 5.0.0, NumPy 2.5.4, both from `/usr/local/lib/python3.12/dist-packages`.
 
 A rebuild reuses the cache up to the first changed step. If it downloads everything again, the cache was pruned (`docker builder prune`, or Docker Desktop's automatic cleanup) or the image predates a Dockerfile change: one slow build, then it's fast again.
 
