@@ -35,6 +35,7 @@ f1tenth_polimi/
 │   ├── ros/              # ROS image (ros:jazzy + deps + simulator)
 │   └── novnc/            # Optional browser display for RViz
 ├── docker-compose.yaml   # Services: arm, x86, jet, novnc
+├── Makefile              # make lists the commands that run scripts/
 ├── ros2_ws/
 │   ├── src/
 │   │   ├── f1tenth_system/   # Submodule: drivers (our fork)
@@ -60,7 +61,7 @@ cb                                # build the workspace (first time)
 simcar                            # simulator as the car: map spielberg, laser sl450
 ```
 
-Once the image is built, `bash scripts/sim/start.real.sh` does the last four lines in one go.
+Once the image is built, `make sim` does the last four lines in one go. `make` lists every command.
 
 - `setup_git.sh` fetches the submodules, except the private `Latex_Templates` (see [Contributing](CONTRIBUTING.md)), and sets `push.recurseSubmodules=check`, `submodule.recurse=true` and an `upstream` remote in the fork. Safe to re-run.
 - `HOST_UID` / `HOST_GID` (from `id -u`, `id -g`) make the container user match yours, so files created in the bind-mounted folders stay yours on the host.
