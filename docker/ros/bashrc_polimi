@@ -1,11 +1,11 @@
 # Sourced from ~/.bashrc in the F1tenth_PoliMI containers.
-source /opt/ros/humble/setup.bash
+source /opt/ros/$ROS_DISTRO/setup.bash
 [ -f /opt/sim_ws/install/setup.bash ] && source /opt/sim_ws/install/setup.bash
 [ -f "$HOME/ws/install/setup.bash" ] && source "$HOME/ws/install/setup.bash"
 
 # Functions, not aliases: they also work in `docker compose exec arm bash -c "source /etc/bashrc_polimi && cb"`.
 sauce() {
-    source /opt/ros/humble/setup.bash
+    source /opt/ros/$ROS_DISTRO/setup.bash
     [ -f /opt/sim_ws/install/setup.bash ] && source /opt/sim_ws/install/setup.bash
     [ -f "$HOME/ws/install/setup.bash" ] && source "$HOME/ws/install/setup.bash"
 }

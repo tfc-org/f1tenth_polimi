@@ -20,8 +20,8 @@ Building needs `pdflatex`, `latexdiff` and the Source Serif/Sans/Code Pro fonts 
 
 The car's drivers live in a separate repository that we forked, linked here as a submodule. That keeps upstream's history intact and lets us pull their fixes, at the price of one extra commit whenever we change the fork.
 
-- `ros2_ws/src/f1tenth_system` is a submodule: our fork `tfc-org/f1tenth_system_polimi`, branch `humble-polimi`.
-- Its own submodules: `vesc` (`ros2`), `ackermann_mux` (`foxy-devel`, builds on Humble), `teleop_tools` (`humble-devel`).
+- `ros2_ws/src/f1tenth_system` is a submodule: our fork `tfc-org/f1tenth_system_polimi`, branch `jazzy-polimi`.
+- Its own submodules: `vesc` (`jazzy`), `ackermann_mux` (`foxy-devel`; no Jazzy apt release, so it builds here from source), `teleop_tools` (`humble-devel`, builds on Jazzy).
 - `setup_git.sh` adds `upstream` → `f1tenth/f1tenth_system`.
 
 ### Edit the fork (two commits)
@@ -30,7 +30,7 @@ A submodule is a pointer to one commit of the other repository. Changing the for
 
 ```bash
 cd ros2_ws/src/f1tenth_system
-git switch humble-polimi                  # submodules start detached
+git switch jazzy-polimi                   # submodules start detached
 git add -A && git commit -m "..." && git push              # 1) fork
 cd ../../..
 git add ros2_ws/src/f1tenth_system
@@ -46,8 +46,8 @@ To bring in what the F1TENTH maintainers changed since our fork:
 ```bash
 cd ros2_ws/src/f1tenth_system
 git fetch upstream
-git log --oneline humble-polimi..upstream/humble-devel     # preview
-git switch humble-polimi && git merge upstream/humble-devel
+git log --oneline jazzy-polimi..upstream/jazzy-devel       # preview
+git switch jazzy-polimi && git merge upstream/jazzy-devel
 git submodule update --init --recursive
 git push
 ```
