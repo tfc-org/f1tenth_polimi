@@ -9,7 +9,7 @@
 \input{doc}
 \docbrand{polimi}
 
-\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The simulator: gym, bridge and car models}{0.03}{F1tenth PoliMI team}
+\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The simulator: gym, bridge and car models}{0.04}{F1tenth PoliMI team}
 \docclassification{Public}
 
 \newcommand{\prop}{\target{Proposed}}
@@ -21,6 +21,7 @@
 0.01 & 2026-10-25 & F1tenth PoliMI team & Initial draft from \code{simulator.md} and \code{polimi\_sim} \\
 0.02 & 2026-11-08 & F1tenth PoliMI team & Whole simulator design: the Jazzy and JAX gym target, the room world with a taped track, camera, IMU, evaluation monitors, the \code{/sim} namespace and truth frame, the config overlay; this document is the simulator's design home; steering limits \\
 0.03 & 2026-11-09 & F1tenth PoliMI team & Right-sized: IMU, localization monitor, camera and world extras deferred (S-12 to S-15), objects of one height, simpler off-track rule (DEC-14); camera sources \code{render} and \code{bag}, bag replay needs no gym and comes first; line detection scored on its path against the tape centre line \\
+0.04 & 2026-11-09 & F1tenth PoliMI team & Plan review: replayed images converted by their encoding with NumPy, never \code{cv\_bridge} in Python (\code{TDD\_F1tenth} DEC-02) \\
 }
 
 % ============================================================================
@@ -274,7 +275,7 @@ Keyboard and Foxglove teleop speak \code{Twist}, the mux speaks Ackermann. \code
 
 \begin{itemize}
   \item \textbf{Replay is open loop:} bag frames do not follow the simulated car, so this source starts no gym, models or mux, and only the stack's line detection runs on them, not path following. They test detection on the real tape and the real floor, which the drawing cannot show (S-10).
-  \item \textbf{Replay frames:} a bag from the camera alone has no \code{/odom}, so the path stays in \code{base\_link}. A path in \code{odom} (RASD OI-02) needs a bag from the car that also holds \code{/tf}, \code{/tf\_static} and \code{/odom}. The bag keeps the driver's encoding (YUYV on the car), so \code{polimi\_lines} converts through \code{cv\_bridge}.
+  \item \textbf{Replay frames:} a bag from the camera alone has no \code{/odom}, so the path stays in \code{base\_link}. A path in \code{odom} (RASD OI-02) needs a bag from the car that also holds \code{/tf}, \code{/tf\_static} and \code{/odom}. The bag keeps the driver's encoding (YUYV on the car [VERIFY]), so \code{polimi\_lines} converts by the image's \code{encoding} field with NumPy, never \code{cv\_bridge} in Python (\code{TDD\_F1tenth} DEC-02).
   \item \textbf{Order:} \code{bag} needs neither the gym nor a world, so it is built first, on today's images, ahead of the Jazzy migration (S-05); \code{render} follows with the room worlds.
   \item \textbf{Drawing:} every visible thing is a flat polygon (floor, tape in chunks of at most 1\,m that never overlap, wall panels, every prism face). Per frame: camera pose $=$ truth (rear axle) $\circ$ \code{camera\_mount.yaml} $\circ$ the colour optical frame; clip to the view, project with the intrinsics, fill far to near with OpenCV, simple distance shading; lens distortion with one precomputed remap, so the factory calibration (\code{plumb\_bob}) can be pasted in.
   \item \textbf{Profile:} \code{720p30}, colour 1280\x720 in YUYV on the car; the car's launch pins the same preset. \code{720p60} is added once the 335L is shown to give it in YUYV (S-06).
