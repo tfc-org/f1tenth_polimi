@@ -10,7 +10,7 @@
 \input{doc}
 \docbrand{polimi}
 
-\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The car: stack, car interface and deployment}{0.04}{F1tenth PoliMI team}
+\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The car: stack, car interface and deployment}{0.05}{F1tenth PoliMI team}
 \docclassification{Public}
 
 \newcommand{\prop}{\target{Proposed}}
@@ -21,6 +21,7 @@
 0.02 & 2026-11-08 & F1tenth PoliMI team & Review of v0.01: DEC-08 follows the Jazzy migration; DEC-12 allows our packages in a fork's own folder; JetPack 7.2.1 on the car (DEC-13); Jazzy migration summarised (\cref{sec:migration}); stop-test chain, steering limits (T-12) and the \code{/joy} stand-in owner; references to working notes removed \\
 0.03 & 2026-11-09 & F1tenth PoliMI team & Controllers and tuning topics (PID and Pure Pursuit, FR-PTH-009); camera calibration procedure in the car bringup (FR-DRV-005, T-06); line detection on replayed camera bags; IMU model deferred until OI-08 \\
 0.04 & 2026-11-09 & F1tenth PoliMI team & Plan review: simulator camera and camera-on-the-bench steps before the logic; bag replay in the launch, with the stack on \code{use\_sim\_time}; an online path carries its image's stamp \\
+0.05 & 2026-11-09 & F1tenth PoliMI team & Plan review: bag replay follows the Jazzy migration \\
 }
 
 % ============================================================================
@@ -370,7 +371,7 @@ Python & system Python of the image; \code{uv} on the host & house rule \\
   \item \textbf{Jazzy migration} (\cref{sec:migration}): Jazzy images, the JAX gym, the simulator fork as a submodule.
   \item \textbf{\code{polimi\_bringup}:} the car interface README, \code{stack.launch.py}, \code{sim.launch.py}, \code{common.launch.py}, our \code{mux.yaml}; \code{simcar} calls \code{hw:=sim}; with DEC-08 the mux leaves the simulator fork.
   \item \textbf{Safety:} OI-09 locks and AEB, with the \code{/joy} stand-in (T-01), tested in the simulator.
-  \item \textbf{Simulator camera} (\code{TDD\_Gym}): the room world with a taped track, the drawn camera and \code{track\_monitor}, for AC-V1-02 in the simulator. Bag replay is built earlier, on today's images.
+  \item \textbf{Simulator camera} (\code{TDD\_Gym}): the room world with a taped track, the drawn camera and \code{track\_monitor}, for AC-V1-02 in the simulator. Bag replay comes first in this step, as it needs no gym or world.
   \item \textbf{Camera on the bench}, before the car is built: the 335L with \code{orbbec\_camera}, its topic names (T-02) and profiles (\code{TDD\_Gym} S-06), the tape and floor chosen (RASD A-002, A-003; \code{TDD\_Gym} S-04), the first bags of the real tape.
   \item \textbf{Logic:} mapping and localization, line detection (on replayed camera bags of the real tape and on the drawn camera, \code{TDD\_Gym}), path following (PID and Pure Pursuit, error topics), as the base platform needs.
   \item \textbf{Car bringup}, when the car is built: \code{car.launch.py}, udev rules, measured configs, the camera calibration procedure, safety tests on the car.
