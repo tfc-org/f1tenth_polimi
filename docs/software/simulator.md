@@ -25,7 +25,7 @@ docker compose exec arm bash -c "source /etc/bashrc_polimi && simcar levine debu
 docker compose exec arm bash -c "source /etc/bashrc_polimi && simcar levine ideal:=true"                   # no imperfections, see Ideal mode
 ```
 
-- From the host, the same in one line each: `bash scripts/sim/start.real.sh`, `start.ideal.sh`, `start.teleop.sh`, `reset.sh`, `stop.sh` (see [scripts/sim](../../scripts/sim/README.md)).
+- From the host, the same in one line each: `bash scripts/sim/start.real.sh`, `start.ideal.sh`, `start.teleop.sh`, `reset.sh`, `stop.sh` (see [scripts/sim](../../scripts/sim/README.md)), or `make sim`, `make sim-ideal`, `make teleop`, `make reset`, `make stop` from the root `Makefile`.
 - `simcar [map] [launch args]` is a shell function from `docker/ros/bashrc_polimi`. `map` is a file name in `maps/` (ours or the defaults, below). It passes `config_dir:=~/ws/config`; the rest goes to `ros2 launch polimi_sim sim_car.launch.py`.
 - The car only moves when commanded (teleop or `/drive`).
 - Stop: `Ctrl-C`.

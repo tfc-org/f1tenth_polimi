@@ -10,7 +10,7 @@
 \input{doc}
 \docbrand{polimi}
 
-\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The car: stack, car interface and deployment}{0.06}{F1tenth PoliMI team}
+\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The car: stack, car interface and deployment}{0.10}{F1tenth PoliMI team}
 \docclassification{Public}
 
 \newcommand{\prop}{\target{Proposed}}
@@ -23,6 +23,10 @@
 0.04 & 2026-11-09 & F1tenth PoliMI team & Plan review: simulator camera and camera-on-the-bench steps before the logic; bag replay in the launch, with the stack on \code{use\_sim\_time}; an online path carries its image's stamp \\
 0.05 & 2026-11-09 & F1tenth PoliMI team & Plan review: bag replay follows the Jazzy migration \\
 0.06 & 2026-11-09 & F1tenth PoliMI team & Jazzy migration step 1 done: the images run on \code{ros:jazzy} with the DEC-02 packages and \code{f1tenth\_system} on \code{jazzy-polimi}; today-versus-target, deployment and repositories updated. Plan review: camera on the bench before the simulator camera, bench bags carry the stand's camera pose \\
+0.07 & 2026-11-09 & F1tenth PoliMI team & Jazzy migration steps 2 and 3 done: the simulator fork is the submodule \code{ros2\_ws/src/f1tenth\_gym\_ros} with \code{polimi\_sim}, on the JAX gym; repositories and today-versus-target updated \\
+0.08 & 2026-11-09 & F1tenth PoliMI team & Jazzy migration step 4: the forks' default branches are \code{jazzy-polimi} and \code{dev-jazzy-polimi}; the Humble images and volumes go after acceptance \\
+0.09 & 2026-11-10 & F1tenth PoliMI team & Matched to the repo: the Jazzy migration is done and the Humble images and volumes are removed; rollback by revert and rebuild; our track maps \tbd, the fork defaults until then \\
+0.10 & 2026-11-10 & F1tenth PoliMI team & Protected branches are the Jazzy ones only, as the rulesets \\
 }
 
 % ============================================================================
@@ -49,7 +53,7 @@ This document defines how the car's software is built: the layers of the stack, 
 \dec\ agreed \quad \prop\ proposed, waiting for the team's confirmation \quad \target{V2} later phase \quad \tbd\ open.
 
 \begin{caveat}
-\textbf{Today versus target.} The images run ROS~2 Jazzy and the drivers come from \code{jazzy-polimi}: step 1 of the Jazzy migration (\cref{sec:migration}) is done. The simulator still runs the Humble-era gym and bridge, and \code{polimi\_sim} is still in this repo, until steps 2 and 3. This document describes the Jazzy target; where today differs, it says so.
+\textbf{Today versus target.} The images run ROS~2 Jazzy and the drivers come from \code{jazzy-polimi}: the Jazzy migration (\cref{sec:migration}) is done: the simulator runs the JAX gym and our fork of the bridge, the submodule \code{ros2\_ws/src/f1tenth\_gym\_ros}, with \code{polimi\_sim} inside. The forks' default branches are the Jazzy ones, and the Humble images and volumes are removed. This document describes the Jazzy stack; what is not built yet is marked \prop\ or \tbd.
 \end{caveat}
 
 % ============================================================================
@@ -199,7 +203,7 @@ VESC 6 MkVI & USB, \code{/dev/sensors/vesc} (udev rule \tbd) & \code{vesc\_drive
 \midrule
 \code{f1tenth\_polimi} & -- (this repo) & Our packages, configs, maps, Docker, docs \\
 \code{f1tenth\_system\_polimi} & \code{ros2\_ws/src/f1tenth\_system} & Upstream drivers, branch \code{jazzy-polimi} \\
-\code{f1tenth\_gym\_polimi} & \code{ros2\_ws/src/f1tenth\_gym\_ros} (after the migration) & Upstream bridge plus \code{polimi\_sim}, branch \code{dev-jazzy-polimi} \\
+\code{f1tenth\_gym\_polimi} & \code{ros2\_ws/src/f1tenth\_gym\_ros} & Upstream bridge plus \code{polimi\_sim}, branch \code{dev-jazzy-polimi} \\
 \bottomrule
 \end{tabularx}
 
@@ -254,7 +258,7 @@ The measured car lives in \code{ros2\_ws/config/}, written once and read by both
 \code{config/car/laser\_mount.yaml} & car bringup, simulator & \code{base\_link}\arrowto\code{laser}: today f1tenth's defaults 0.27, 0, 0.11\,m, [MEASURE] on the car \\
 \code{config/car/camera\_mount.yaml} \tbd & car bringup, simulator & \code{base\_link}\arrowto\code{camera\_link} \\
 \code{config/lidar/sl450.yaml} & simulator & SL450 model: 40\,Hz, 270\textdegree, 0.2\textdegree, ranges 0.05--25\,m, noise, dropout \\
-\code{config/maps/*.yaml} & simulator & track maps for the simulator \\
+\code{config/maps/*.yaml} \tbd & simulator & our track maps; until then the fork's \code{polimi\_sim/config/defaults/maps/} (\code{spielberg}, \code{levine}) \\
 \code{maps/} & SLAM, AMCL & saved room maps \\
 \code{polimi\_bringup/config/mux.yaml} \prop & mux & priorities, timeouts (0.2\,s), locks \\
 \code{polimi\_bringup/config/} slam, amcl, ekf \prop & logic & node parameters \\
@@ -369,7 +373,7 @@ Python & system Python of the image; \code{uv} on the host & house rule \\
 
 \subsection{Plan}
 \begin{enumerate}
-  \item \textbf{Jazzy migration} (\cref{sec:migration}): Jazzy images, the JAX gym, the simulator fork as a submodule.
+  \item \textbf{Jazzy migration} (\cref{sec:migration}): Jazzy images, the JAX gym, the simulator fork as a submodule. Done (9 Nov 2026).
   \item \textbf{\code{polimi\_bringup}:} the car interface README, \code{stack.launch.py}, \code{sim.launch.py}, \code{common.launch.py}, our \code{mux.yaml}; \code{simcar} calls \code{hw:=sim}; with DEC-08 the mux leaves the simulator fork.
   \item \textbf{Safety:} OI-09 locks and AEB, with the \code{/joy} stand-in (T-01), tested in the simulator.
   \item \textbf{Camera on the bench}, before the car is built: the 335L with \code{orbbec\_camera}, its topic names (T-02) and profiles (\code{TDD\_Gym} S-06), the tape and floor chosen (RASD A-002, A-003; \code{TDD\_Gym} S-04), the first bags of the real tape, each with the stand's camera pose in \code{/tf\_static} (\code{TDD\_Gym}).
@@ -380,18 +384,18 @@ Python & system Python of the image; \code{uv} on the host & house rule \\
 \end{enumerate}
 
 \subsection{Jazzy migration}\label{sec:migration}
-Moves every image to ROS~2 Jazzy, the simulator to the JAX gym, and \code{polimi\_sim} into the simulator fork. Four steps, each checked before the next; the distro, the gym and the frames change in separate commits, so a failure points to one change.
+Moves every image to ROS~2 Jazzy, the simulator to the JAX gym, and \code{polimi\_sim} into the simulator fork. Four steps, each checked before the next, all done (9 Nov 2026); the distro, the gym and the frames change in separate commits, so a failure points to one change.
 \begin{enumerate}
-  \item \textbf{Image:} every image on \code{ros:jazzy}, \code{f1tenth\_system} on \code{jazzy-polimi}, the DEC-02 packages, and the same gym and bridge as today, so a breakage is about ROS only. Checks: the images build for any host UID (Ubuntu 24.04 images ship a user with UID 1000); \code{cv2} and NumPy load from the gym's pip copies (DEC-02); the packages and drivers build; today's simulator runs.
+  \item \textbf{Image:} every image on \code{ros:jazzy}, \code{f1tenth\_system} on \code{jazzy-polimi}, the DEC-02 packages, and the same gym and bridge as before, so a breakage is about ROS only. Checks: the images build for any host UID (Ubuntu 24.04 images ship a user with UID 1000); \code{cv2} and NumPy load from the gym's pip copies (DEC-02); the packages and drivers build; the previous simulator runs.
   \item \textbf{Simulator in the fork:} \code{polimi\_sim} moves into \code{f1tenth\_gym\_polimi} with its history and is ported to the JAX gym and the \code{dev-jazzy} bridge, with labelled default configs and a config overlay (\code{TDD\_Gym}). The mux stays in the fork until DEC-08.
   \item \textbf{Submodule:} the fork becomes \code{ros2\_ws/src/f1tenth\_gym\_ros}, \code{polimi\_sim} leaves this repo, and the measured car configs stay in \code{ros2\_ws/config/}. Steps 2 and 3 merge together. Checks: the workspace layout; on the new gym, the scan matches the gym's beam by beam and physics keeps $\geq$ 95\,\% of 100\,Hz on the Mac; the config overlay logs each file's source.
-  \item \textbf{GitHub:} default branches and rules move to the Jazzy branches; the Humble images and volumes are removed after acceptance.
+  \item \textbf{GitHub:} default branches and rules move to the Jazzy branches (\code{jazzy-polimi}, \code{dev-jazzy-polimi}); the Humble images and volumes are removed.
 \end{enumerate}
-Rollback: the Humble images, volumes and branches stay until step 4, so going back is a revert and the old image tags.
+Rollback: the Humble branches stay on the forks, so going back is a revert and a rebuild of the Humble images.
 
 \subsection{Development Standards}
 \begin{itemize}
-  \item \textbf{Branches and reviews:} every change through a PR. Protected branches (\code{main}; the forks' \code{humble-*}, \code{jazzy-*}, \code{dev-humble*}, \code{dev-jazzy*}) block force pushes and deletion and need one approval.
+  \item \textbf{Branches and reviews:} every change through a PR. Protected branches (\code{main}; the forks' default branch and \code{jazzy-*} or \code{dev-jazzy*}) block force pushes and deletion and need one approval.
   \item \textbf{Submodules:} changing a fork takes a commit there, then a pointer commit here; \code{push.recurseSubmodules=check} blocks a pointer to an unpushed commit. \code{scripts/setup\_git.sh} sets this up and adds the \code{upstream} remotes.
   \item \textbf{Upstream sync:} merge upstream into our branch, never rewrite it; preview with \code{git log ours..upstream}.
   \item \textbf{Pins:} gym and bridge refs are bumped on purpose, never by following a branch (NFR-MNT-002).

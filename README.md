@@ -40,7 +40,7 @@ f1tenth_polimi/
 │   ├── src/
 │   │   ├── f1tenth_system/   # Submodule: drivers (our fork)
 │   │   ├── f1tenth_gym_ros/  # Submodule: the simulator (our fork: bridge + polimi_sim)
-│   │   └── polimi_*/         # Our packages
+│   │   └── polimi_*/         # Our packages (none yet)
 │   ├── config/               # our car's measured configs (laser mount, laser), no rebuild
 │   └── maps/                 # Our own map images (none yet)
 └── scripts/              # setup_git.sh, sim/ (start, teleop, reset, stop the simulator)

@@ -144,8 +144,6 @@ docker compose rm -sf novnc                # stop and remove
 
 Docker images and build cache grow over time.
 
-The Humble images (`f1tenth_polimi:humble_*`) and volumes (`build_arm`, …) from before the Jazzy migration stay until its acceptance, for rollback; delete them then.
-
 ```bash
 docker compose down -v                     # also delete build/install/log volumes
 docker system df                           # disk usage
