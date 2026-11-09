@@ -1,6 +1,6 @@
 % ============================================================================
 % TDD --- F1tenth PoliMI simulator
-% Source: docs/software/simulator.md (technical sections folded in), ros2_ws/src/polimi_sim,
+% Source: docs/software/simulator.md (technical sections folded in), ros2_ws/src/f1tenth_gym_ros/polimi_sim,
 %         TDD_F1tenth (car interface), simulation plans 01.4 and 01.5 (folded in)
 % ============================================================================
 \documentclass[11pt,a4paper]{article}
@@ -165,7 +165,7 @@ Each file comes from \code{config\_dir} (\code{simcar} passes \code{ros2\_ws/con
 \endhead
 \code{maps/<map>.yaml} & \code{map\_path}, start pose \code{sx}, \code{sy}, \code{stheta}; any other \code{gym\_bridge} parameter overrides \code{sim/gym.yaml}. For a generated world also a \code{world:} block (paths of the generated files) and the source hash \planned & \code{simcar <map>} \\
 \code{lidar/<lidar>.yaml} & The laser: rate, FOV, resolution, ranges, effects & \code{lidar:=<lidar>} (default \code{sl450}) \\
-\code{car/laser\_mount.yaml} & \code{base\_link}\arrowto\code{laser}: x 0.27, y 0, z 0.11\,m, yaw 0, roll 0 [MEASURE]; read by the car too (\code{TDD\_F1tenth} DEC-09) & -- \\
+\code{car/laser\_mount.yaml} & \code{base\_link}\arrowto\code{laser}: x 0.27, y 0, z 0.11\,m, yaw 0, roll 0 [MEASURE]; read by the car's bringup too, once built (\code{TDD\_F1tenth} DEC-09) & -- \\
 \code{car/body.yaml} & \planned\ What the gym's vehicle parameters lack: steering limits left 0.3135 and right 0.2634\,rad, track width 0.281\,m [MEASURE] & -- \\
 \code{car/camera\_mount.yaml} & \planned\ \code{base\_link}\arrowto\code{camera\_link} (x, y, z, roll, pitch, yaw); read by the car too & \code{camera\_mount:=} \\
 \code{camera/gemini\_335l.yaml} & \planned\ Profile \code{720p30} (\code{720p60} after S-06), intrinsics and \code{plumb\_bob} distortion [VERIFY] & \code{camera\_profile:=} \\
@@ -205,10 +205,10 @@ The generator (\code{ros2 run polimi\_sim make\_world <source>}) writes, into \c
 
 It also writes the small, tracked \code{config/maps/<world>.yaml}. Occupancy maps are rasterised conservatively, so an object thinner than a cell stays. Hard checks fail the run: the loop closes (else the gap is printed), and every corner is wider than the car's minimum turning radius on that side plus a margin (about 1.02\,m left and 1.22\,m right with today's steering limits, plus 0.2\,m). The launch runs the generator at every start, so a world is never stale.
 
-The shipped world \code{demo\_room} is a placeholder, not the real track: a 10\,m\x8\,m room, a 1.0\,m wide loop with a hairpin and a chicane, black tape on a light grey floor, a few boxes (one lower than the laser, so the LiDAR misses it but the car hits it).
+The first world to build, \code{demo\_room}, is a placeholder, not the real track: a 10\,m\x8\,m room, a 1.0\,m wide loop with a hairpin and a chicane, black tape on a light grey floor, a few boxes (one lower than the laser, so the LiDAR misses it but the car hits it).
 
 \subsection{Model parameters}
-First guesses from datasheets and upstream defaults. \code{actuation\_model}, \code{odom\_model} and \code{teleop\_bridge} defaults are in \code{polimi\_sim/config/}; the laser's in \code{config/lidar/}. Live: all \code{lidar\_model} effects, all \code{actuation\_model} and \code{teleop\_bridge} values, the \code{odom\_model} error values. Fixed at start: rates, scan geometry, \code{range\_max}, topics, frames.
+First guesses from datasheets and upstream defaults. \code{actuation\_model}, \code{odom\_model} and \code{teleop\_bridge} defaults are in the fork's \code{polimi\_sim/config/defaults/}, the laser's in \code{config/defaults/lidar/}; our measured laser is \code{config/lidar/} in this repo, and a file in \code{config\_dir} wins. Live: all \code{lidar\_model} effects, all \code{actuation\_model} and \code{teleop\_bridge} values, the \code{odom\_model} error values. Fixed at start: rates, scan geometry, \code{range\_max}, topics, frames.
 
 \subsubsection{\code{lidar\_model} (\code{config/lidar/sl450.yaml})}
 \begin{tabularx}{\textwidth}{@{}L{4.2cm} L{3.0cm} Y@{}}
@@ -366,7 +366,7 @@ The stack may use \code{/scan}, \code{/odom}, the camera and IMU topics, TF \cod
 \bottomrule
 \end{tabularx}
 
-Every pose the simulator takes or gives (\code{sx}, \code{sy}, \code{stheta}, \code{/sim/initialpose}, \code{/sim/reset\_pose}, the sensor mounts, the start line) is the rear axle, \code{base\_link} on the car, once on the \code{dev-jazzy} bridge.
+Every pose the simulator takes or gives (\code{sx}, \code{sy}, \code{stheta}, \code{/sim/initialpose}, \code{/sim/reset\_pose}, the sensor mounts, the start line) is the rear axle, \code{base\_link} on the car, as the \code{dev-jazzy} bridge does.
 
 % ============================================================================
 \section{Requirements Traceability}
