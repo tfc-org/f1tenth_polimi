@@ -16,6 +16,8 @@ cd docs && make status          # make build <Doc> to rebuild a PDF
 
 Building needs `pdflatex`, `latexdiff` and the Source Serif/Sans/Code Pro fonts on the host.
 
+The car-interface figure (nodes and topics, the stack between the car and the simulator) is the same TikZ code in `TDD_F1tenth` and `TDD_Gym`, between `% BEGIN shared-figure car-interface` and `% END` lines, so its edits are highlighted in both. Edit both copies the same way: `make build` and `make release` stop if they differ (`make check-figures` runs the check alone). A change that adds, renames or removes a node, topic or frame updates the figure in the same PR.
+
 ## Git and submodules
 
 The car's drivers and the simulator live in separate repositories that we forked, linked here as submodules. That keeps upstream's history intact and lets us pull their fixes, at the price of one extra commit whenever we change a fork.
