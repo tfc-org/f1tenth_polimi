@@ -10,7 +10,7 @@
 \input{doc}
 \docbrand{polimi}
 
-\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The car: stack, car interface and deployment}{0.10}{F1tenth PoliMI team}
+\docsetup{Technical Design Document (TDD)}{F1tenth PoliMI}{The car: stack, car interface and deployment}{0.11}{F1tenth PoliMI team}
 \docclassification{Public}
 
 \newcommand{\prop}{\target{Proposed}}
@@ -27,6 +27,7 @@
 0.08 & 2026-11-09 & F1tenth PoliMI team & Jazzy migration step 4: the forks' default branches are \code{jazzy-polimi} and \code{dev-jazzy-polimi}; the Humble images and volumes go after acceptance \\
 0.09 & 2026-11-10 & F1tenth PoliMI team & Matched to the repo: the Jazzy migration is done and the Humble images and volumes are removed; rollback by revert and rebuild; our track maps \tbd, the fork defaults until then \\
 0.10 & 2026-11-10 & F1tenth PoliMI team & Protected branches are the Jazzy ones only, as the rulesets \\
+0.11 & 2026-11-11 & F1tenth PoliMI team & The car-interface figure (shared with \code{TDD\_Gym}); the simulator's \code{/sim} names come first within plan step 2; fork edits stay additive; each change updates the figure; the Humble branches are gone \\
 }
 
 % ============================================================================
@@ -270,10 +271,105 @@ The measured car lives in \code{ros2\_ws/config/}, written once and read by both
 % ============================================================================
 \section{Interfaces}\label{sec:interfaces}
 % ============================================================================
-\subsection{The car interface}
-This table is the contract the stack is built against; it becomes the README of \code{polimi\_bringup} \prop. All message types are standard ROS ones, so no interface package is needed. Exact camera and IMU topic names follow \code{orbbec\_camera}'s defaults, so the car needs no remaps \tbd[T-02].
+\begin{docfigure}[{\subsection{The car interface}
+\Cref{fig:iface} and the table after it are the contract the stack is built against; the table becomes the README of \code{polimi\_bringup} \prop. All message types are standard ROS ones, so no interface package is needed. Exact camera and IMU topic names follow \code{orbbec\_camera}'s defaults, so the car needs no remaps \tbd[T-02].
 
-Only \code{/ackermann\_cmd} goes from the stack to the hardware; every other row comes from the hardware.
+Only \code{/ackermann\_cmd} goes from the stack to the hardware; every other row comes from the hardware.}]
+% BEGIN shared-figure car-interface (identical in TDD_F1tenth and TDD_Gym; make build checks it)
+\begin{tikzpicture}[
+    built/.style={},
+    plan/.style={densely dashed},
+    defer/.style={dotted, thick},
+    port/.style={data, text width=4.7cm, minimum height=0.78cm, minimum width=4.9cm},
+    carn/.style={ext, text width=3.3cm, minimum height=0.78cm, minimum width=3.5cm},
+    simn/.style={svc, text width=3.3cm, minimum height=0.78cm, minimum width=3.5cm},
+    only/.style={svc, text width=3.0cm, minimum height=0.95cm, minimum width=3.2cm},
+  ]
+  % columns: car x=2.4, stack ports x=8.6, simulator x=14.8; one row per car-interface topic
+  \draw[zone=darkgray] (0.45,2.75) rectangle (4.35,-8.35);
+  \node[zlabel=darkgray] at (0.45,2.75) {car, \code{hw:=car} (Orin)};
+  \draw[zone=accent, solid, thick] (5.9,2.75) rectangle (11.3,-8.35);
+  \node[zlabel=accent] at (5.9,2.75) {driving stack: a black box};
+  \draw[zone=primary] (12.85,2.75) rectangle (17.75,-8.35);
+  \node[zlabel=primary] at (12.85,2.75) {simulator, \code{hw:=sim} (Mac)};
+
+  \node[font=\sffamily\scriptsize, align=center, text width=5.1cm] at (8.6,1.35) {%
+    logic: SLAM / AMCL, line detection,\\PID / Pure Pursuit\\
+    common: AEB, locks, \code{ackermann\_mux}\textsuperscript{*}\\
+    owns \code{/map}, \code{/initialpose}, \code{/drive},\\TF \code{map}\arrowto\code{odom}};
+
+  \foreach \y/\n/\t/\s in {
+      0.0/scan/{\code{/scan}, frame \code{laser}}/built,
+     -1.1/odom/{\code{/odom}, TF \code{odom}\arrowto\code{base\_link}}/built,
+     -2.2/cam/{\code{/camera/color/image\_raw},\\\code{camera\_info}}/plan,
+     -3.3/imu/{\code{/camera/gyro\_accel/sample}}/defer,
+     -4.4/stf/{static TF \code{base\_link}\arrowto\\\code{laser}, \code{camera\_link}}/built,
+     -5.5/joy/{\code{/joy} (deadman, e-stop)}/plan,
+     -6.6/tel/{\code{/teleop} (priority 100)}/built,
+     -7.7/ack/{\code{/ackermann\_cmd}}/built} {
+    \node[port, \s] (p\n) at (8.6,\y) {\t};
+  }
+
+  \node[carn] (cscan) at (2.4,0.0)  {\code{orbbec\_camera}, SL450};
+  \node[carn] (codom) at (2.4,-1.1) {\code{vesc\_to\_odom}};
+  \node[carn] (ccam)  at (2.4,-2.2) {\code{orbbec\_camera}, 335L};
+  \node[carn, defer] (cimu) at (2.4,-3.3) {\code{orbbec\_camera}, IMU};
+  \node[carn, plan] (cstf) at (2.4,-4.4) {\code{car.launch.py}};
+  \node[carn] (cjoy)  at (2.4,-5.5) {\code{joy\_node}};
+  \node[carn] (ctel)  at (2.4,-6.6) {\code{joy\_teleop}};
+  \node[carn] (cack)  at (2.4,-7.7) {\code{ackermann\_to\_vesc}\\\arrowto\ VESC};
+
+  \node[simn] (sscan) at (14.8,0.0)  {\code{lidar\_model}};
+  \node[simn] (sodom) at (14.8,-1.1) {\code{odom\_model}};
+  \node[simn, plan] (scam) at (14.8,-2.2) {\code{camera\_model}, or a bag\\(\code{camera\_source:=})};
+  \node[simn, defer] (simu) at (14.8,-3.3) {\code{imu\_model}};
+  \node[simn] (sstf)  at (14.8,-4.4) {\code{sim\_car.launch.py}};
+  \node[simn, plan] (sjoy) at (14.8,-5.5) {\code{/joy} stand-in};
+  \node[simn] (stel)  at (14.8,-6.6) {\code{teleop\_bridge}};
+  \node[simn] (sack)  at (14.8,-7.7) {\code{actuation\_model}};
+
+  \foreach \n/\s in {scan/built, odom/built, cam/plan, imu/defer, stf/plan, joy/built, tel/built} {
+    \draw[http, \s] (c\n.east) -- (p\n.west);
+  }
+  \foreach \n/\s in {scan/built, odom/built, cam/plan, imu/defer, stf/built, joy/plan, tel/built} {
+    \draw[http, \s] (s\n.west) -- (p\n.east);
+  }
+  \draw[http] (pack.west) -- (cack.east);
+  \draw[http] (pack.east) -- (sack.west);
+
+  % simulator only: truth and control, never read by the stack
+  \draw[zone=primary] (5.9,-9.0) rectangle (17.75,-13.35);
+  \node[zlabel=primary] at (5.9,-9.0) {simulator only: never read by the stack};
+  \node[ext, text width=3.3cm, minimum width=3.5cm, minimum height=1.25cm] (gym) at (14.8,-10.35) {\code{gym\_bridge} + f1tenth\_gym\\physics 100\,Hz,\\truth 250\,Hz};
+  \node[only, plan] (rst) at (14.8,-12.45) {\code{sim\_reset}\\\code{/sim/reset}, \code{/sim/reset\_pose}};
+  \node[only] (mps) at (7.6,-10.35) {\code{map\_server}\\\code{/map} today,\\\code{/sim/map} planned};
+  \node[only, plan] (mon) at (7.6,-12.45) {\code{track\_monitor}\\\code{/sim/eval/*}, \code{/sim/health/*}};
+  \node[only, plan] (wpub) at (11.2,-12.45) {\code{world\_publisher}\\\code{/sim/truth/tape}};
+  \node[only] (fox) at (11.2,-10.35) {\code{foxglove\_bridge}\\viewer, port 8765};
+
+  \draw[http] (sack.south) -- node[lbl, left] {\code{/sim/drive}} (gym.north);
+  \draw[http, plan] (rst.north) -- node[lbl, left] {\code{/sim/initialpose}} (gym.south);
+  \draw[http] (gym.east) -- (17.35,-10.35) -- node[lbl, pos=0.3, fill=white, rotate=90] {truth pose} (17.35,0.0) -- (sscan.east);
+  \draw[http] (17.35,-1.1) -- (sodom.east);
+  \draw[http, plan] (17.35,-2.2) -- (scam.east);
+  \draw[http, defer] (17.35,-3.3) -- (simu.east);
+
+  % legend
+  \node[font=\sffamily\scriptsize\bfseries, anchor=north west] at (0.45,-9.0) {lines and borders};
+  \draw[http] (0.55,-9.65) -- (1.55,-9.65);        \node[font=\sffamily\scriptsize, anchor=west] at (1.65,-9.65) {built};
+  \draw[http, plan] (0.55,-10.15) -- (1.55,-10.15); \node[font=\sffamily\scriptsize, anchor=west] at (1.65,-10.15) {planned};
+  \draw[http, defer] (0.55,-10.65) -- (1.55,-10.65); \node[font=\sffamily\scriptsize, anchor=west] at (1.65,-10.65) {deferred};
+  \node[data, minimum width=1.0cm, minimum height=0.4cm, inner sep=1pt] at (1.05,-11.3) {};
+  \node[font=\sffamily\scriptsize, anchor=west] at (1.65,-11.3) {car-interface topic};
+  \node[font=\sffamily\scriptsize, anchor=north west, text width=4.6cm, align=left] at (0.45,-11.75) {%
+    Same names, types and frames on both sides.\\
+    \textsuperscript{*}runs in \code{sim\_car.launch.py}\\until DEC-08.\\
+    Bag replay adds \code{/clock}, \code{use\_sim\_time}.\\
+Truth: \code{/ego\_racecar/odom}, TF \code{sim\_world}\arrowto\\\code{ego\_racecar/base\_link}; all \code{/sim/*}.};
+\end{tikzpicture}
+% END shared-figure car-interface
+\caption{The car interface. The stack sits in the middle and sees only the topics in its box; the car (left) and the simulator (right) serve each one under the same name, so the stack cannot tell them apart. Below, the simulator's own nodes and topics, which the stack never reads; each is described in \code{TDD\_Gym}. Dashed: planned; dotted: deferred.}\label{fig:iface}
+\end{docfigure}
 
 \begin{tabularx}{\textwidth}{@{}L{3.6cm} L{3.7cm} Y Y@{}}
 \toprule
@@ -374,7 +470,7 @@ Python & system Python of the image; \code{uv} on the host & house rule \\
 \subsection{Plan}
 \begin{enumerate}
   \item \textbf{Jazzy migration} (\cref{sec:migration}): Jazzy images, the JAX gym, the simulator fork as a submodule. Done (9 Nov 2026).
-  \item \textbf{\code{polimi\_bringup}:} the car interface README, \code{stack.launch.py}, \code{sim.launch.py}, \code{common.launch.py}, our \code{mux.yaml}; \code{simcar} calls \code{hw:=sim}; with DEC-08 the mux leaves the simulator fork.
+  \item \textbf{\code{polimi\_bringup}:} the car interface README, \code{stack.launch.py}, \code{sim.launch.py}, \code{common.launch.py}, our \code{mux.yaml}; \code{simcar} calls \code{hw:=sim}; with DEC-08 the mux leaves the simulator fork. It starts with the simulator's own names (\code{TDD\_Gym} DEC-10): truth under \code{sim\_world}, the gym's map and reset input on \code{/sim/map} and \code{/sim/initialpose}, so \code{/map}, \code{map} and \code{/initialpose} are free for SLAM and AMCL.
   \item \textbf{Safety:} OI-09 locks and AEB, with the \code{/joy} stand-in (T-01), tested in the simulator.
   \item \textbf{Camera on the bench}, before the car is built: the 335L with \code{orbbec\_camera}, its topic names (T-02) and profiles (\code{TDD\_Gym} S-06), the tape and floor chosen (RASD A-002, A-003; \code{TDD\_Gym} S-04), the first bags of the real tape, each with the stand's camera pose in \code{/tf\_static} (\code{TDD\_Gym}).
   \item \textbf{Simulator camera} (\code{TDD\_Gym}): bag replay first, on the bench bags; then the room world with a taped track, the drawn camera and \code{track\_monitor}, for AC-V1-02 in the simulator.
@@ -391,13 +487,15 @@ Moves every image to ROS~2 Jazzy, the simulator to the JAX gym, and \code{polimi
   \item \textbf{Submodule:} the fork becomes \code{ros2\_ws/src/f1tenth\_gym\_ros}, \code{polimi\_sim} leaves this repo, and the measured car configs stay in \code{ros2\_ws/config/}. Steps 2 and 3 merge together. Checks: the workspace layout; on the new gym, the scan matches the gym's beam by beam and physics keeps $\geq$ 95\,\% of 100\,Hz on the Mac; the config overlay logs each file's source.
   \item \textbf{GitHub:} default branches and rules move to the Jazzy branches (\code{jazzy-polimi}, \code{dev-jazzy-polimi}); the Humble images and volumes are removed.
 \end{enumerate}
-Rollback: the Humble branches stay on the forks, so going back is a revert and a rebuild of the Humble images.
+Rollback: none since 10 Nov 2026; the Humble branches, images and volumes are deleted.
 
 \subsection{Development Standards}
 \begin{itemize}
   \item \textbf{Branches and reviews:} every change through a PR. Protected branches (\code{main}; the forks' default branch and \code{jazzy-*} or \code{dev-jazzy*}) block force pushes and deletion and need one approval.
   \item \textbf{Submodules:} changing a fork takes a commit there, then a pointer commit here; \code{push.recurseSubmodules=check} blocks a pointer to an unpushed commit. \code{scripts/setup\_git.sh} sets this up and adds the \code{upstream} remotes.
   \item \textbf{Upstream sync:} merge upstream into our branch, never rewrite it; preview with \code{git log ours..upstream}.
+  \item \textbf{Fork edits:} additive wherever possible, so a sync from upstream merges cleanly: our code in our own folder (\code{polimi\_sim/}), new parameters with upstream's default kept, the smallest diff when an upstream line must change; prefer a fix from outside (our launch, a remap scoped to one node) to a patch.
+  \item \textbf{Diagrams:} a change that adds, renames or removes a node, topic or frame updates \cref{fig:iface} and the topic tables in the same PR. The figure is the same code in this document and \code{TDD\_Gym}; \code{make build} checks that the two copies match.
   \item \textbf{Pins:} gym and bridge refs are bumped on purpose, never by following a branch (NFR-MNT-002).
   \item \textbf{Rebuilds:} code and configs need only \code{cb}; a \code{package.xml}, the Dockerfile or a pin needs an image rebuild.
   \item \textbf{Python:} \code{uv} on the host, never \code{pip install} directly.
