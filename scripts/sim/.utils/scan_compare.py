@@ -3,12 +3,13 @@ import sys
 
 import rclpy
 from rcl_interfaces.srv import GetParameters
+from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
 
 TOPICS = ('/scan', '/sim/scan_unused')
 
 
-def lidar_map(node: rclpy.node.Node) -> str:
+def lidar_map(node: Node) -> str:
     """lidar_model's own map: set on a room world, whose laser slice differs from the gym's map by design."""
     client = node.create_client(GetParameters, '/lidar_model/get_parameters')
     if not client.wait_for_service(timeout_sec=10.0):
