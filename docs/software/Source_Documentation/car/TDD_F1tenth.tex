@@ -341,14 +341,14 @@ Only \code{/ackermann\_cmd} goes from the stack to the hardware; every other row
   \draw[zone=primary] (5.9,-9.0) rectangle (17.75,-13.35);
   \node[zlabel=primary] at (5.9,-9.0) {simulator only: never read by the stack};
   \node[ext, text width=3.3cm, minimum width=3.5cm, minimum height=1.25cm] (gym) at (14.8,-10.35) {\code{gym\_bridge} + f1tenth\_gym\\physics 100\,Hz,\\truth 250\,Hz};
-  \node[only, plan] (rst) at (14.8,-12.45) {\code{sim\_reset}\\\code{/sim/reset}, \code{/sim/reset\_pose}};
+  \node[only] (rst) at (14.8,-12.45) {\code{sim\_reset}\\\code{/sim/reset}, \code{/sim/reset\_pose}};
   \node[only] (mps) at (7.6,-10.35) {\code{map\_server}\\\code{/sim/map}, frame\\\code{sim\_world}};
-  \node[only, plan] (mon) at (7.6,-12.45) {\code{track\_monitor}\\\code{/sim/eval/*}, \code{/sim/health/*}};
-  \node[only, plan] (wpub) at (11.2,-12.45) {\code{world\_publisher}\\\code{/sim/truth/tape}};
+  \node[only] (mon) at (7.6,-12.45) {\code{track\_monitor}\\\code{/sim/eval/*}, \code{/sim/health/*}};
+  \node[only] (wpub) at (11.2,-12.45) {\code{world\_publisher}\\\code{/sim/truth/tape}};
   \node[only] (fox) at (11.2,-10.35) {\code{foxglove\_bridge}\\viewer, port 8765};
 
   \draw[http] (sack.south) -- node[lbl, left] {\code{/sim/drive}} (gym.north);
-  \draw[http, plan] (rst.north) -- node[lbl, left] {\code{/sim/initialpose}} (gym.south);
+  \draw[http] (rst.north) -- node[lbl, left] {\code{/sim/initialpose}} (gym.south);
   \draw[http] (gym.east) -- (17.35,-10.35) -- node[lbl, pos=0.3, fill=white, rotate=90] {truth pose} (17.35,0.0) -- (sscan.east);
   \draw[http] (17.35,-1.1) -- (sodom.east);
   \draw[http, plan] (17.35,-2.2) -- (scam.east);
@@ -473,7 +473,7 @@ Python & system Python of the image; \code{uv} on the host & house rule \\
   \item \textbf{\code{polimi\_bringup}:} the car interface README, \code{stack.launch.py}, \code{sim.launch.py}, \code{common.launch.py}, our \code{mux.yaml}; \code{simcar} calls \code{hw:=sim}; with DEC-08 the mux leaves the simulator fork. It starts with the simulator's own names (\code{TDD\_Gym} DEC-10), done: truth under \code{sim\_world}, the gym's map and reset input on \code{/sim/map} and \code{/sim/initialpose}, so \code{/map}, \code{map} and \code{/initialpose} are free for SLAM and AMCL.
   \item \textbf{Safety:} OI-09 locks and AEB, with the \code{/joy} stand-in (T-01), tested in the simulator.
   \item \textbf{Camera on the bench}, before the car is built: the 335L with \code{orbbec\_camera}, its topic names (T-02) and profiles (\code{TDD\_Gym} S-06), the tape and floor chosen (RASD A-002, A-003; \code{TDD\_Gym} S-04), the first bags of the real tape, each with the stand's camera pose in \code{/tf\_static} (\code{TDD\_Gym}).
-  \item \textbf{Simulator camera} (\code{TDD\_Gym}): bag replay first, on the bench bags; then the room world with a taped track, the drawn camera and \code{track\_monitor}, for AC-V1-02 in the simulator.
+  \item \textbf{Simulator camera} (\code{TDD\_Gym}): bag replay first, on the bench bags; then the drawn camera, for AC-V1-02 in the simulator. The room world with a taped track and \code{track\_monitor} came first, after the \code{/sim} names: done.
   \item \textbf{Logic:} mapping and localization, line detection (on replayed camera bags of the real tape and on the drawn camera, \code{TDD\_Gym}), path following (PID and Pure Pursuit, error topics), as the base platform needs.
   \item \textbf{Car bringup}, when the car is built: \code{car.launch.py}, udev rules, measured configs, the camera calibration procedure, safety tests on the car.
   \item \textbf{Advanced topic} \target{V2}, once OI-01 is decided.
@@ -538,7 +538,7 @@ T-08 & \code{orbbec\_camera} version & 2.9.3 is in the Jazzy apt repo; check it 
 T-09 & Unmatched remap & Today's bringup remaps \code{ackermann\_cmd\_out}\arrowto\code{ackermann\_drive}, which matches nothing: the mux publishes \code{ackermann\_cmd}. Gone with DEC-06. \\
 T-10 & CUDA in the container [VERIFY] & With JetPack 7.2.1 (DEC-13), check at bringup how CUDA reaches the \code{ros:jazzy} container through the NVIDIA Container Toolkit: mounted from the host, or installed in the \code{jet} image. \\
 T-11 & Battery connector [BOM GAP] & The VESC has XT90; the BOM has no TRX (Traxxas High-Current) to XT90 adapter. Check the Zeee 3S packs' connector (\cref{sec:chassis}). \\
-T-12 & Steering limits [MEASURE] & \code{vesc.yaml}'s servo clamp gives +0.31\,rad left and $-$0.26\,rad right (minimum turning radius about 1.0 / 1.2\,m); the simulator clamps at $\pm$0.4189\,rad (\code{TDD\_Gym}). Measure on the car; the simulator then takes the car's limits. \\
+T-12 & Steering limits [MEASURE] & \code{vesc.yaml}'s servo clamp gives +0.31\,rad left and $-$0.26\,rad right (minimum turning radius about 1.0 / 1.2\,m); the simulator clamps each side from \code{config/car/body.yaml}, with these values (\code{TDD\_Gym}). Measure on the car and update that file. \\
 \bottomrule
 \end{tabularx}
 

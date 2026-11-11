@@ -32,19 +32,20 @@ docker compose exec arm bash -c "source /etc/bashrc_polimi && simcar levine idea
 
 ## Configs
 
-Each file comes from `ros2_ws/config/` (our car's measured files, bind-mounted: no rebuild) if it is there, otherwise from polimi_sim's labelled defaults in `ros2_ws/src/f1tenth_gym_ros/polimi_sim/config/defaults/` (stock f1tenth and datasheet values). The launch logs where each one came from, and warns for each file we don't have. Today `ros2_ws/config/` holds `car/laser_mount.yaml` and `lidar/sl450.yaml`; everything else is a default. The files are chosen independently and merged at launch (see `TDD_Gym`).
+Each file comes from `ros2_ws/config/` (our car's measured files, bind-mounted: no rebuild) if it is there, otherwise from polimi_sim's labelled defaults in `ros2_ws/src/f1tenth_gym_ros/polimi_sim/config/defaults/` (stock f1tenth and datasheet values). The launch logs where each one came from, and warns for each file we don't have. Today `ros2_ws/config/` holds `car/laser_mount.yaml`, `car/body.yaml`, `lidar/sl450.yaml` and the generated `maps/demo_room.yaml`; everything else is a default. The files are chosen independently and merged at launch (see `TDD_Gym`).
 
 | File | Holds | Chosen with |
 |---|---|---|
 | `maps/<map>.yaml` | `map_path`, start pose `sx`, `sy`, `stheta` | `simcar <map>` |
 | `lidar/<lidar>.yaml` | The laser: rate, FOV, resolution, ranges, effects | `lidar:=<lidar>` (default `sl450`) |
 | `car/laser_mount.yaml` | `base_link → laser`: `x 0.27, y 0.0, z 0.11, yaw 0.0, roll 0.0` **[MEASURE]** | – |
+| `car/body.yaml` | Track width 0.281 m, servo clamp 0.3135 rad left and 0.2634 rad right **[MEASURE]** | – |
 | `sim/gym.yaml` | Everything else the gym needs: topics, vehicle preset, opponents | – |
 | `actuation_model.yaml`, `odom_model.yaml`, `teleop_bridge.yaml` | The other models | – |
 
-- Maps: `spielberg` (default; Red Bull Ring, a closed track about 2.2 m wide), `levine` (a corridor loop, start at (-12, 0)).
+- Maps: `spielberg` (default; Red Bull Ring, a closed track about 2.2 m wide), `levine` (a corridor loop, start at (-12, 0)), and the room world `demo_room` (below).
 - Start poses `sx`, `sy`, `stheta` are the rear axle (`base_link` on the car).
-- New map: a file with those four keys in `ros2_ws/config/maps/`. `map_path` is absolute or relative to f1tenth_gym_ros's share directory (bundled: `maps/levine`, `maps/levine_obs`, `maps/levine_blocked`, `maps/blank`, `maps/Spielberg`). Any other `gym_bridge` parameter put there overrides `sim/gym.yaml`.
+- New map: a file with those four keys in `ros2_ws/config/maps/`. `map_path` is absolute, relative to the map file's folder when it starts with `./` or `../`, or else relative to f1tenth_gym_ros's share directory (bundled: `maps/levine`, `maps/levine_obs`, `maps/levine_blocked`, `maps/blank`, `maps/Spielberg`). Any other `gym_bridge` parameter put there overrides `sim/gym.yaml`.
 - New laser: copy `lidar/sl450.yaml` into `ros2_ws/config/lidar/`, then `simcar spielberg lidar:=<name>`.
 - To override a default, copy it to the same path under `ros2_ws/config/` and edit it.
 
@@ -120,26 +121,30 @@ docker compose exec arm bash \
 - `i` forward · `,` reverse · `k` stop · `u` / `o` forward-left / forward-right. `q` / `z`: speed ±10% (starts at 0.5 m/s).
 - Keyboard `angular.z` is 1.0, so `u` / `o` give full lock (clamped to 0.4189 rad).
 
+## Room worlds
+
+A room with furniture and a taped loop on the floor, as the car will run (`TDD_Gym`, Worlds). One source file per world, `ros2_ws/maps/src/<world>.yaml`: the room outline, boxes and prisms with a height, the track as straights and arcs with its width and tape, the floor colour and the start. `demo_room` is a placeholder until the real room is surveyed.
+
+- `simcar demo_room` (or `make sim MAP=demo_room`) regenerates the world at every start, so editing the source is the only step. By hand: `ros2 run polimi_sim make_world ~/ws/maps/src/demo_room.yaml` prints the checks, the lap and tape lengths and the start pose.
+- A corner tighter than the car can turn plus 0.2 m (about 1.02 m left, 1.22 m right) or a loop that does not close stops the run with the reason; `--allow-tight` lets a tight corner through with a warning.
+- The generated folder `ros2_ws/maps/<world>/` is git-ignored; `ros2_ws/config/maps/<world>.yaml` is tracked and comes out byte-identical, so `git status` stays clean.
+- The LiDAR sees the room at laser height: walls, the objects taller than 0.11 m, never the tape. The car collides with every object.
+- Evaluation, from the truth: `/sim/eval/on_track`, `lateral_offset`, `progress`, `lap`, `lap_time`, `collisions`, `/sim/health/physics_rate` (≈ 100) and `odom_rate` (≈ 250); `/sim/truth/tape` draws the tape in Foxglove. Off track means the car's centre is more than 0.69 m from the centre line: all four wheels past a tape.
+- One CSV line per lap (`lap,time_s,valid,max_offset_m,time_off_track_s`) in `ros2_ws/runs/` on the host. A lap with a contact or a reset is `valid: false`. After pulling this change, recreate the container once (`docker compose up -d arm`) so `ros2_ws/runs` is mounted; until then the CSVs go to `/tmp/polimi_sim/` in the container.
+- `make scan-compare` is for walled maps: it refuses a room world, whose laser slice differs from the gym's collision map by design.
+
 ## Reset position
 
 Puts the car back on the track after a crash or to start again from a known place.
 
-Stop the car first: a reset keeps the last speed. Then:
-
-Foxglove 3D panel, with our layout → publish tool → **Pose estimate** → click and drag; or
+Stop the car first: a reset keeps the last speed. Then, from the host:
 ```bash
-docker compose exec arm bash \
-  -c "source /etc/bashrc_polimi && ros2 topic pub --once /sim/initialpose geometry_msgs/msg/PoseWithCovarianceStamped '{header: {frame_id: sim_world}, pose: {pose: {position: {x: -12.0, y: 0.0}, orientation: {w: 1.0}}}}'"
+bash scripts/sim/reset.sh              # the start of the running map (or: make reset)
+bash scripts/sim/reset.sh 2.0 1.0 1.57 # rear axle at x, y [m], yaw [rad] in sim_world
 ```
+Both go through `sim_reset` (`/sim/reset`, `/sim/reset_pose`), which also zeroes `/odom`, as after moving the car by hand. Inside the container: `ros2 service call /sim/reset std_srvs/srv/Empty`.
 
-The command above is the `levine` start. For `spielberg` use `position: {x: 0.0, y: 0.0}, orientation: {z: 0.1296, w: 0.9916}`.
-
-After a crash the car stays stuck until reset.
-
-Both of these move only the true car. To also start `/odom` again from 0, use `bash scripts/sim/reset.sh` from the host, or add:
-```bash
-docker compose exec arm bash -c "source /etc/bashrc_polimi && ros2 service call /odom_model/reset std_srvs/srv/Empty"
-```
+Foxglove's **Pose estimate** with our layout publishes on `/sim/initialpose`: it moves only the true car and leaves `/odom` integrating. After a crash the car stays stuck until reset.
 
 ## Topics
 

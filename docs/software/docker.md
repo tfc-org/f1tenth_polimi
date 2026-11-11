@@ -15,7 +15,7 @@ Pick the service for your machine. `arm` is used in the examples; replace it wit
 
 - One image per target, built from `docker/ros/Dockerfile` on `ros:jazzy` (Ubuntu 24.04, Python 3.12). The distro is the build argument `ROS_DISTRO`; images are tagged `f1tenth_polimi:jazzy_<service>`.
 - The container user gets the host's UID and GID (`HOST_UID`, `HOST_GID`). The base image's own `ubuntu` user (UID 1000) is removed first, so a host UID of 1000 (usual on the Jetson and on Linux PCs) works too.
-- Bind mounts: `ros2_ws/src`, `ros2_ws/config`, `ros2_ws/maps`, `docker/ros/bashrc_polimi` (read-only, over the copy baked into the image), and `docker/ros/python3-ros` (read-only, see [PyCharm interpreter](#pycharm-interpreter)).
+- Bind mounts: `ros2_ws/src`, `ros2_ws/config`, `ros2_ws/maps`, `ros2_ws/runs` (the simulator's lap CSVs), `docker/ros/bashrc_polimi` (read-only, over the copy baked into the image), and `docker/ros/python3-ros` (read-only, see [PyCharm interpreter](#pycharm-interpreter)).
 - `build/`, `install/`, `log/` live in Docker volumes named after the distro (`build_jazzy_arm`, …), not in the repo: build output stays out of git and is kept between container restarts.
 - Ports bind to `127.0.0.1` only.
 
