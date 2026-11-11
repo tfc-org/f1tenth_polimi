@@ -342,7 +342,7 @@ Only \code{/ackermann\_cmd} goes from the stack to the hardware; every other row
   \node[zlabel=primary] at (5.9,-9.0) {simulator only: never read by the stack};
   \node[ext, text width=3.3cm, minimum width=3.5cm, minimum height=1.25cm] (gym) at (14.8,-10.35) {\code{gym\_bridge} + f1tenth\_gym\\physics 100\,Hz,\\truth 250\,Hz};
   \node[only, plan] (rst) at (14.8,-12.45) {\code{sim\_reset}\\\code{/sim/reset}, \code{/sim/reset\_pose}};
-  \node[only] (mps) at (7.6,-10.35) {\code{map\_server}\\\code{/map} today,\\\code{/sim/map} planned};
+  \node[only] (mps) at (7.6,-10.35) {\code{map\_server}\\\code{/sim/map}, frame\\\code{sim\_world}};
   \node[only, plan] (mon) at (7.6,-12.45) {\code{track\_monitor}\\\code{/sim/eval/*}, \code{/sim/health/*}};
   \node[only, plan] (wpub) at (11.2,-12.45) {\code{world\_publisher}\\\code{/sim/truth/tape}};
   \node[only] (fox) at (11.2,-10.35) {\code{foxglove\_bridge}\\viewer, port 8765};
@@ -470,7 +470,7 @@ Python & system Python of the image; \code{uv} on the host & house rule \\
 \subsection{Plan}
 \begin{enumerate}
   \item \textbf{Jazzy migration} (\cref{sec:migration}): Jazzy images, the JAX gym, the simulator fork as a submodule. Done (9 Nov 2026).
-  \item \textbf{\code{polimi\_bringup}:} the car interface README, \code{stack.launch.py}, \code{sim.launch.py}, \code{common.launch.py}, our \code{mux.yaml}; \code{simcar} calls \code{hw:=sim}; with DEC-08 the mux leaves the simulator fork. It starts with the simulator's own names (\code{TDD\_Gym} DEC-10): truth under \code{sim\_world}, the gym's map and reset input on \code{/sim/map} and \code{/sim/initialpose}, so \code{/map}, \code{map} and \code{/initialpose} are free for SLAM and AMCL.
+  \item \textbf{\code{polimi\_bringup}:} the car interface README, \code{stack.launch.py}, \code{sim.launch.py}, \code{common.launch.py}, our \code{mux.yaml}; \code{simcar} calls \code{hw:=sim}; with DEC-08 the mux leaves the simulator fork. It starts with the simulator's own names (\code{TDD\_Gym} DEC-10), done: truth under \code{sim\_world}, the gym's map and reset input on \code{/sim/map} and \code{/sim/initialpose}, so \code{/map}, \code{map} and \code{/initialpose} are free for SLAM and AMCL.
   \item \textbf{Safety:} OI-09 locks and AEB, with the \code{/joy} stand-in (T-01), tested in the simulator.
   \item \textbf{Camera on the bench}, before the car is built: the 335L with \code{orbbec\_camera}, its topic names (T-02) and profiles (\code{TDD\_Gym} S-06), the tape and floor chosen (RASD A-002, A-003; \code{TDD\_Gym} S-04), the first bags of the real tape, each with the stand's camera pose in \code{/tf\_static} (\code{TDD\_Gym}).
   \item \textbf{Simulator camera} (\code{TDD\_Gym}): bag replay first, on the bench bags; then the room world with a taped track, the drawn camera and \code{track\_monitor}, for AC-V1-02 in the simulator.

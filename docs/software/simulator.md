@@ -86,7 +86,7 @@ docker compose exec arm bash -c "source /etc/bashrc_polimi && ros2 param set /li
 
 - Browser: https://app.foxglove.dev (free account) or the desktop app.
 - **Open connection → Foxglove WebSocket →** `ws://localhost:8765`.
-- Ready-made layout: **Layouts → Import from file** → `ros2_ws/src/f1tenth_gym_ros/config/foxglove/gym_bridge_foxglove.json`.
+- Ready-made layout: **Layouts → Import from file** → `ros2_ws/src/f1tenth_gym_ros/polimi_sim/config/foxglove/polimi_sim.json`: fixed frame `sim_world`, the gym's map on `/sim/map`, **Pose estimate** on `/sim/initialpose`. Upstream's `config/foxglove/gym_bridge_foxglove.json` still uses `map` and `/initialpose`, which the gym no longer listens to.
   The layout predates `simcar`: its scan entry points at the gym's scan, so enable `/scan` by hand.
 
 ### Truth and estimate
@@ -126,10 +126,10 @@ Puts the car back on the track after a crash or to start again from a known plac
 
 Stop the car first: a reset keeps the last speed. Then:
 
-Foxglove 3D panel → publish tool → **Pose estimate** → click and drag; or
+Foxglove 3D panel, with our layout → publish tool → **Pose estimate** → click and drag; or
 ```bash
 docker compose exec arm bash \
-  -c "source /etc/bashrc_polimi && ros2 topic pub --once /initialpose geometry_msgs/msg/PoseWithCovarianceStamped '{header: {frame_id: map}, pose: {pose: {position: {x: -12.0, y: 0.0}, orientation: {w: 1.0}}}}'"
+  -c "source /etc/bashrc_polimi && ros2 topic pub --once /sim/initialpose geometry_msgs/msg/PoseWithCovarianceStamped '{header: {frame_id: sim_world}, pose: {pose: {position: {x: -12.0, y: 0.0}, orientation: {w: 1.0}}}}'"
 ```
 
 The command above is the `levine` start. For `spielberg` use `position: {x: 0.0, y: 0.0}, orientation: {z: 0.1296, w: 0.9916}`.
