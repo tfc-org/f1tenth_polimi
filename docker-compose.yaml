@@ -82,6 +82,7 @@ services:
       - ./ros2_ws/src:/home/${USER}/ws/src:rw
       - ./ros2_ws/config:/home/${USER}/ws/config:rw
       - ./ros2_ws/maps:/home/${USER}/ws/maps:rw
+      - ./ros2_ws/runs:/home/${USER}/ws/runs:rw
       - /dev:/dev:rw
       - ./docker/ros/python3-ros:/opt/ros-python/bin/python:ro   # IDE interpreter with the ROS environment
       - x11socket:/tmp/.X11-unix
@@ -107,6 +108,7 @@ services:
       - ./ros2_ws/src:/home/${USER}/ws/src:rw
       - ./ros2_ws/config:/home/${USER}/ws/config:rw
       - ./ros2_ws/maps:/home/${USER}/ws/maps:rw
+      - ./ros2_ws/runs:/home/${USER}/ws/runs:rw
       - /dev:/dev:rw
       - ./docker/ros/python3-ros:/opt/ros-python/bin/python:ro   # IDE interpreter with the ROS environment
       - x11socket:/tmp/.X11-unix
@@ -133,6 +135,7 @@ services:
       - ./ros2_ws/src:/home/${USER}/ws/src:rw
       - ./ros2_ws/config:/home/${USER}/ws/config:rw
       - ./ros2_ws/maps:/home/${USER}/ws/maps:rw
+      - ./ros2_ws/runs:/home/${USER}/ws/runs:rw
       - /dev:/dev:rw
       - ./docker/ros/python3-ros:/opt/ros-python/bin/python:ro   # IDE interpreter with the ROS environment
       - x11socket:/tmp/.X11-unix

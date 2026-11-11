@@ -47,6 +47,12 @@ $RECYCLE.BIN/
 ros2_ws/build/
 ros2_ws/install/
 ros2_ws/log/
+# make_world's output; the sources in ros2_ws/maps/src stay tracked
+ros2_ws/maps/*/
+!ros2_ws/maps/src/
+# track_monitor's lap CSVs
+ros2_ws/runs/*
+!ros2_ws/runs/.gitkeep
 
 # Recorded bag files (large; share outside git)
 *.bag

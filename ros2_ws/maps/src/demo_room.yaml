@@ -1,0 +1,37 @@
+# demo_room: a PLACEHOLDER world, not the real room or track (TDD_Gym S-04). make_world turns it into
+# ros2_ws/maps/demo_room/ and ros2_ws/config/maps/demo_room.yaml; simcar demo_room does it at every start.
+# Lengths in m, angles in degrees, colours rgb 0-255, coordinates in sim_world.
+room:
+  outline: [[0.0, 0.0], [10.0, 0.0], [10.0, 8.0], [0.0, 8.0]]
+  wall_height: 2.5
+  rgb: [225, 225, 220]
+floor:
+  rgb: [190, 190, 190]          # light grey
+track:
+  origin: [2.875, 2.25, 0.0]    # where the first primitive starts: x, y, heading
+  # Two straights, a wide corner, a chicane and a hairpin. Every radius >= 1.5 m: R_min is about 1.02 m
+  # left and 1.22 m right (car/body.yaml), and make_world wants R_min + 0.2 m.
+  primitives:
+    - straight: 4.0
+    - arc: {radius: 2.0, angle: 90}    # wide corner
+    - arc: {radius: 1.5, angle: 90}
+    - straight: 0.75
+    - arc: {radius: 1.5, angle: 30}    # chicane
+    - arc: {radius: 1.5, angle: -60}
+    - arc: {radius: 1.5, angle: 30}
+    - straight: 0.75
+    - arc: {radius: 1.75, angle: 180}  # hairpin
+  width: 1.0                    # between the inner edges of the two tapes
+  tape_width: 0.05
+  rgb: [20, 20, 20]             # black tape
+start:
+  s: 2.0                        # arc length of the start line from the track origin
+resolution: 0.05
+objects:                        # a box (x, y, yaw, length, width) or a prism (polygon), each with one height
+  - {x: 5.0, y: 7.5, yaw: 0.0, length: 1.6, width: 0.6, height: 0.8, rgb: [150, 110, 70]}
+  - {x: 8.5, y: 7.4, yaw: 0.0, length: 0.8, width: 0.8, height: 1.2, rgb: [90, 90, 110]}
+  - {x: 6.5, y: 4.0, yaw: 0.0, length: 0.6, width: 0.4, height: 0.5, rgb: [60, 110, 60]}
+  - {x: 4.5, y: 4.0, yaw: 0.0, length: 0.4, width: 0.4, height: 0.08, rgb: [200, 60, 40]}   # under the laser: only the car hits it
+  - polygon: [[0.1, 0.1], [1.2, 0.1], [1.2, 0.4], [0.4, 0.4], [0.4, 1.2], [0.1, 1.2]]          # corner shelf
+    height: 1.8
+    rgb: [120, 120, 120]

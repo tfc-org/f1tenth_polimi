@@ -1,0 +1,5 @@
+# The car's body where f1tenth_gym's vehicle preset cannot hold it. Shared by the simulator (polimi_sim).
+# [MEASURE] on the car. Initial values: Traxxas spec and f1tenth_stack's vesc.yaml servo clamp.
+track_width: 0.281        # m, between the wheel centres
+steer_max_left: 0.3135    # rad, servo clamp to the left
+steer_max_right: 0.2634   # rad, to the right
