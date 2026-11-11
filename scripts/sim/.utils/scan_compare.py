@@ -2,14 +2,31 @@ import math
 import sys
 
 import rclpy
+from rcl_interfaces.srv import GetParameters
 from sensor_msgs.msg import LaserScan
 
 TOPICS = ('/scan', '/sim/scan_unused')
 
 
+def lidar_map(node: rclpy.node.Node) -> str:
+    """lidar_model's own map: set on a room world, whose laser slice differs from the gym's map by design."""
+    client = node.create_client(GetParameters, '/lidar_model/get_parameters')
+    if not client.wait_for_service(timeout_sec=10.0):
+        print('lidar_model is not running: start the simulator first')
+        sys.exit(1)
+    future = client.call_async(GetParameters.Request(names=['lidar_map']))
+    rclpy.spin_until_future_complete(node, future, timeout_sec=10.0)
+    values = future.result().values if future.result() else []
+    return values[0].string_value if values else ''
+
+
 def main() -> None:
     rclpy.init()
     node = rclpy.create_node('scan_compare')
+    if lidar_map(node):
+        print('this map has a world: block, so lidar_model casts on its laser slice and the gym on the collision '
+              'map: the scans differ by design. scan-compare is for walled maps such as spielberg.')
+        sys.exit(1)
     scans: dict[str, LaserScan] = {}
     for topic in TOPICS:
         node.create_subscription(LaserScan, topic, lambda msg, t=topic: scans.setdefault(t, msg), 10)
