@@ -205,7 +205,7 @@ f1tenth\_gym & Physics: single-track model, collisions, ray caster & Python API 
 \code{world\_publisher} & The tape as markers, for Foxglove & \code{/sim/truth/tape} \\
 \code{track\_monitor} & On-track status, laps, lateral offset, simulator health (\cref{sec:eval}) & truth pose \arrowto\ \code{/sim/eval/*}, \code{/sim/health/*}, lap CSV \\
 \code{sim\_reset} & One way to put the car somewhere & \code{/sim/reset}, \code{/sim/reset\_pose} \arrowto\ \code{/sim/initialpose}, \code{/odom\_model/reset} \\
-truth-jump detector & Tells resets (teleports) from wall contacts, so no model interpolates across them; a contact starts on a rising edge of the collision flag and ends after it stays false for 0.3\,s: along a wall the flag drops for up to 0.19\,s between hits (gate G-A, S-11) & truth pose, \code{/ego\_racecar/collision} \\
+truth-jump detector & Tells resets (teleports) from wall contacts, so no model interpolates across them; a teleport is a move faster than \code{v\_max} over at most 0.05\,s, so a reset less than about 1\,m from a parked car is not seen; a contact starts on a rising edge of the collision flag and ends after it stays false for 0.3\,s: along a wall the flag drops for up to 0.19\,s between hits (gate G-A, S-11) & truth pose, \code{/ego\_racecar/collision} \\
 \code{sim\_car.launch.py} & Regenerates a room world, merges the configs, starts all of the above (the world's nodes only on a map with a \code{world:} block); \code{ideal:=true}, \code{camera\_source:=} \planned & launch arguments \\
 \bottomrule
 \end{tabularx}
