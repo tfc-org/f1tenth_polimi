@@ -11,5 +11,5 @@ in_container "cb"
 
 # The page keeps retrying until the simulator's bridge is up, a few seconds later.
 open_foxglove
-echo "==> simcar $*   (Foxglove: ws://localhost:8765)"
+echo "==> simcar $*   (Foxglove: ws://localhost:${FOXGLOVE_PORT:-8765})"
 in_container "simcar $*"

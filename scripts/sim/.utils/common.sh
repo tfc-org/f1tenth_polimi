@@ -27,7 +27,7 @@ ensure_up() {
 }
 
 # Open Foxglove in the host's browser, connected to the simulator. FOXGLOVE=0 skips it.
-FOXGLOVE_URL="https://app.foxglove.dev/?ds=foxglove-websocket&ds.url=ws://localhost:8765"
+FOXGLOVE_URL="https://app.foxglove.dev/?ds=foxglove-websocket&ds.url=ws://localhost:${FOXGLOVE_PORT:-8765}"
 open_foxglove() {
     [ "${FOXGLOVE:-1}" = "0" ] && return 0
     if command -v open > /dev/null; then

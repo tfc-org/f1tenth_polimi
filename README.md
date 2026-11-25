@@ -41,8 +41,9 @@ f1tenth_polimi/
 │   │   ├── f1tenth_system/   # Submodule: drivers (our fork)
 │   │   ├── f1tenth_gym_ros/  # Submodule: the simulator (our fork: bridge + polimi_sim)
 │   │   └── polimi_*/         # Our packages (none yet)
-│   ├── config/               # our car's measured configs (laser mount, laser), no rebuild
-│   └── maps/                 # Our own map images (none yet)
+│   ├── config/               # our car's measured configs (laser mount, body, laser) and generated maps, no rebuild
+│   ├── maps/src/             # room world sources (demo_room); make_world writes next to them (git-ignored)
+│   └── runs/                 # lap CSVs from the simulator (git-ignored)
 └── scripts/              # setup_git.sh, sim/ (start, teleop, reset, stop the simulator)
 ```
 

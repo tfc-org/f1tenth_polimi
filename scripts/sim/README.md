@@ -33,7 +33,7 @@ The start scripts open Foxglove in the browser, already pointed at `ws://localho
 - Anything after the map goes to the launch: `bash scripts/sim/start.real.sh spielberg debug_map_to_odom:=truth`.
 - The start scripts build the workspace first (`cb`): slow the first time, a few seconds afterwards.
 - `Ctrl-C` in a start script stops the simulator only; the container keeps running, so the next start is quick.
-- `reset.sh 2.0 1.0 1.57` takes x [m], y [m], yaw [rad] in the map frame. It moves the true car and restarts `/odom` from 0, so the state is the same as right after a start. No relaunch needed.
+- `reset.sh 2.0 1.0 1.57` takes x [m], y [m], yaw [rad] of the rear axle in `sim_world`, the simulator's truth frame. It moves the true car and restarts `/odom` from 0, so the state is the same as right after a start. No relaunch needed.
 - `stop.sh` keeps the build volumes. `stop.sh --volumes` deletes them: the next start rebuilds the whole workspace.
 - `FOXGLOVE=0 bash scripts/sim/start.real.sh` starts without opening the browser, e.g. when the tab is already open.
 - Service: `arm` on Apple Silicon, `x86` elsewhere. Override with `SERVICE=x86 bash scripts/sim/start.real.sh`.
