@@ -53,7 +53,6 @@ services:
     profiles: [gui]
     build: ./docker/novnc
     image: f1tenth_polimi:novnc
-    container_name: f1tenth_polimi_novnc
     restart: unless-stopped
     environment:
       - RESOLUTION=${NOVNC_RESOLUTION:-1920x1080x24}
@@ -73,10 +72,9 @@ services:
         WITH_SIM: "1"
     restart: unless-stopped
     image: f1tenth_polimi:jazzy_arm
-    container_name: f1tenth_polimi_arm
     <<: *common
     ports:
-      - "127.0.0.1:8765:8765"   # Foxglove
+      - "127.0.0.1:${FOXGLOVE_PORT:-8765}:8765"   # Foxglove
     # build artefacts in named volumes: fast on macOS, no symlink issues on external drives
     volumes:
       - ./ros2_ws/src:/home/${USER}/ws/src:rw
@@ -100,10 +98,9 @@ services:
         WITH_SIM: "1"
     restart: unless-stopped
     image: f1tenth_polimi:jazzy_x86
-    container_name: f1tenth_polimi_x86
     <<: *common
     ports:
-      - "127.0.0.1:8765:8765"   # Foxglove
+      - "127.0.0.1:${FOXGLOVE_PORT:-8765}:8765"   # Foxglove
     volumes:
       - ./ros2_ws/src:/home/${USER}/ws/src:rw
       - ./ros2_ws/config:/home/${USER}/ws/config:rw
@@ -127,7 +124,6 @@ services:
         <<: *user-args
         WITH_SIM: "0"
     image: f1tenth_polimi:jazzy_jet
-    container_name: f1tenth_polimi_jet
     <<: *common
     network_mode: host
     runtime: nvidia
