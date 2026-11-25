@@ -7,8 +7,13 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/.utils/common.sh"
 
 require_sim
+not_answered() {
+    echo "$1 got no answer in ${WAIT}s: the simulator may still be starting, or sim_reset is not running (ros2 node list)." >&2
+    exit 1
+}
+WAIT=15
 if [ $# -eq 0 ]; then
-    in_container "ros2 service call /sim/reset std_srvs/srv/Empty" > /dev/null
+    in_container "timeout $WAIT ros2 service call /sim/reset std_srvs/srv/Empty" > /dev/null || not_answered /sim/reset
     echo "==> reset to the start, odometry zeroed"
     exit 0
 elif [ $# -eq 3 ]; then
@@ -29,6 +34,7 @@ qz=$(awk -v yaw="$yaw" 'BEGIN { printf "%.6f", sin(yaw / 2) }')
 qw=$(awk -v yaw="$yaw" 'BEGIN { printf "%.6f", cos(yaw / 2) }')
 
 echo "==> reset to x=$x y=$y yaw=$yaw"
-in_container "ros2 topic pub --once /sim/reset_pose geometry_msgs/msg/PoseStamped \
-  '{header: {frame_id: sim_world}, pose: {position: {x: $x, y: $y}, orientation: {z: $qz, w: $qw}}}'" > /dev/null
+in_container "timeout $WAIT ros2 topic pub --once /sim/reset_pose geometry_msgs/msg/PoseStamped \
+  '{header: {frame_id: sim_world}, pose: {position: {x: $x, y: $y}, orientation: {z: $qz, w: $qw}}}'" > /dev/null \
+    || not_answered /sim/reset_pose
 echo "==> odometry zeroed"

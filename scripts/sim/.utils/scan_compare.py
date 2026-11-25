@@ -1,5 +1,6 @@
 import math
 import sys
+import time
 
 import rclpy
 from rcl_interfaces.srv import GetParameters
@@ -7,6 +8,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
 
 TOPICS = ('/scan', '/sim/scan_unused')
+WAIT = 15.0
 
 
 def lidar_map(node: Node) -> str:
@@ -31,7 +33,11 @@ def main() -> None:
     scans: dict[str, LaserScan] = {}
     for topic in TOPICS:
         node.create_subscription(LaserScan, topic, lambda msg, t=topic: scans.setdefault(t, msg), 10)
+    deadline = time.monotonic() + WAIT
     while len(scans) < len(TOPICS) and rclpy.ok():
+        if time.monotonic() > deadline:
+            print(f'no scan in {WAIT:.0f} s on {", ".join(t for t in TOPICS if t not in scans)}: is the simulator up?')
+            sys.exit(1)
         rclpy.spin_once(node, timeout_sec=0.5)
     ours, gym = (scans[t] for t in TOPICS)
     if len(ours.ranges) != len(gym.ranges) or abs(ours.angle_min - gym.angle_min) > 1e-6:
@@ -41,6 +47,9 @@ def main() -> None:
     limit = min(ours.range_max, gym.range_max) - 1e-3
     diffs = sorted(abs(a - b) for a, b in zip(ours.ranges, gym.ranges)
                    if math.isfinite(a) and math.isfinite(b) and a < limit and b < limit)
+    if not diffs:
+        print('no beam hits a wall within range on both scans: start the car near a wall')
+        sys.exit(1)
     median = diffs[len(diffs) // 2]
     print(f'{len(diffs)} of {len(ours.ranges)} beams compared, median |diff| {median * 100:.2f} cm, '
           f'max {diffs[-1] * 100:.2f} cm')
