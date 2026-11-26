@@ -88,7 +88,7 @@ Runbooks:
 | Doc | Contents |
 |---|---|
 | [Docker](docs/software/docker.md) | Services, networking, day-to-day commands, rebuilds, car bringup, PyCharm interpreter, cleanup |
-| [Simulator](docs/software/simulator.md) | `simcar`: run, map / laser configs, live parameters, Foxglove, teleop, reset |
+| [Simulator](docs/software/simulator.md) | `simcar`: run, map / laser configs, room worlds, camera, evaluation, live parameters, Foxglove, teleop, reset |
 | [Contributing](CONTRIBUTING.md) | Fork and submodule workflow, teams, permissions, rulesets, who can review and merge |
 
 ## License

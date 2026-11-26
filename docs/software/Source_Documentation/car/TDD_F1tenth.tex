@@ -301,7 +301,7 @@ Only \code{/ackermann\_cmd} goes from the stack to the hardware; every other row
   \foreach \y/\n/\t/\s in {
       0.0/scan/{\code{/scan}, frame \code{laser}}/built,
      -1.1/odom/{\code{/odom}, TF \code{odom}\arrowto\code{base\_link}}/built,
-     -2.2/cam/{\code{/camera/color/image\_raw},\\\code{camera\_info}}/plan,
+     -2.2/cam/{\code{/camera/color/image\_raw},\\\code{camera\_info}}/built,
      -3.3/imu/{\code{/camera/gyro\_accel/sample}}/defer,
      -4.4/stf/{static TF \code{base\_link}\arrowto\\\code{laser}, \code{camera\_link}}/built,
      -5.5/joy/{\code{/joy} (deadman, e-stop)}/plan,
@@ -321,7 +321,7 @@ Only \code{/ackermann\_cmd} goes from the stack to the hardware; every other row
 
   \node[simn] (sscan) at (14.8,0.0)  {\code{lidar\_model}};
   \node[simn] (sodom) at (14.8,-1.1) {\code{odom\_model}};
-  \node[simn, plan] (scam) at (14.8,-2.2) {\code{camera\_model}, or a bag\\(\code{camera\_source:=})};
+  \node[simn] (scam) at (14.8,-2.2) {\code{camera\_model}; a bag\\(\code{camera\_source:=}) planned};
   \node[simn, defer] (simu) at (14.8,-3.3) {\code{imu\_model}};
   \node[simn] (sstf)  at (14.8,-4.4) {\code{sim\_car.launch.py}};
   \node[simn, plan] (sjoy) at (14.8,-5.5) {\code{/joy} stand-in};
@@ -331,7 +331,7 @@ Only \code{/ackermann\_cmd} goes from the stack to the hardware; every other row
   \foreach \n/\s in {scan/built, odom/built, cam/plan, imu/defer, stf/plan, joy/built, tel/built} {
     \draw[http, \s] (c\n.east) -- (p\n.west);
   }
-  \foreach \n/\s in {scan/built, odom/built, cam/plan, imu/defer, stf/built, joy/plan, tel/built} {
+  \foreach \n/\s in {scan/built, odom/built, cam/built, imu/defer, stf/built, joy/plan, tel/built} {
     \draw[http, \s] (s\n.west) -- (p\n.east);
   }
   \draw[http] (pack.west) -- (cack.east);
@@ -473,7 +473,7 @@ Python & system Python of the image; \code{uv} on the host & house rule \\
   \item \textbf{\code{polimi\_bringup}:} the car interface README, \code{stack.launch.py}, \code{sim.launch.py}, \code{common.launch.py}, our \code{mux.yaml}; \code{simcar} calls \code{hw:=sim}; with DEC-08 the mux leaves the simulator fork. It starts with the simulator's own names (\code{TDD\_Gym} DEC-10), done: truth under \code{sim\_world}, the gym's map and reset input on \code{/sim/map} and \code{/sim/initialpose}, so \code{/map}, \code{map} and \code{/initialpose} are free for SLAM and AMCL.
   \item \textbf{Safety:} OI-09 locks and AEB, with the \code{/joy} stand-in (T-01), tested in the simulator.
   \item \textbf{Camera on the bench}, before the car is built: the 335L with \code{orbbec\_camera}, its topic names (T-02) and profiles (\code{TDD\_Gym} S-06), the tape and floor chosen (RASD A-002, A-003; \code{TDD\_Gym} S-04), the first bags of the real tape, each with the stand's camera pose in \code{/tf\_static} (\code{TDD\_Gym}).
-  \item \textbf{Simulator camera} (\code{TDD\_Gym}): bag replay first, on the bench bags; then the drawn camera, for AC-V1-02 in the simulator. The room world with a taped track and \code{track\_monitor} came first, after the \code{/sim} names: done.
+  \item \textbf{Simulator camera} (\code{TDD\_Gym}): the drawn camera, for AC-V1-02 in the simulator: done (26 Nov 2026), ahead of the bag replay, which waits for the bench bags. The room world with a taped track and \code{track\_monitor} came first, after the \code{/sim} names: done.
   \item \textbf{Logic:} mapping and localization, line detection (on replayed camera bags of the real tape and on the drawn camera, \code{TDD\_Gym}), path following (PID and Pure Pursuit, error topics), as the base platform needs.
   \item \textbf{Car bringup}, when the car is built: \code{car.launch.py}, udev rules, measured configs, the camera calibration procedure, safety tests on the car.
   \item \textbf{Advanced topic} \target{V2}, once OI-01 is decided.

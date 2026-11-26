@@ -133,6 +133,16 @@ A room with furniture and a taped loop on the floor, as the car will run (`TDD_G
 - One CSV line per lap (`lap,time_s,valid,max_offset_m,time_off_track_s`) in `ros2_ws/runs/` on the host. A lap with a contact or a reset is `valid: false`. After pulling this change, recreate the container once (`docker compose up -d arm`) so `ros2_ws/runs` is mounted; until then the CSVs go to `/tmp/polimi_sim/` in the container.
 - `make scan-compare` is for walled maps: it refuses a room world, whose laser slice differs from the gym's collision map by design.
 
+### Camera
+
+On a room world the simulator draws the Gemini 335L colour stream from the world at the true pose (`TDD_Gym`, camera_model): flat-coloured floor, tape, walls and objects, with no noise, blur or delay.
+
+- `/camera/color/image_raw` (`rgb8`, 1280×720, 30 Hz) and `/camera/color/camera_info`, as `orbbec_camera` publishes them; TF `base_link → camera_link → camera_color_optical_frame` from `config/car/camera_mount.yaml` (a placeholder until the mount is chosen) and `config/camera/gemini_335l.yaml`. `camera:=none` switches it off; walled maps (`spielberg`, `levine`) have no camera.
+- In Foxglove use the preview `/camera/color/image_raw/compressed` (JPEG, 10 Hz, half size, only while something subscribes). **Never open the raw image topic in Foxglove**: it pushes 83 MB/s through `foxglove_bridge`, in the same container as the simulator.
+- Give Docker Desktop at least 6 CPUs (Settings → Resources); 10 carried the camera with the physics at 100 Hz.
+- One frame without the simulator: `ros2 run polimi_sim render_frame demo_room --pose 3.0 4.0 0.0 --out ~/ws/runs/frame.png`. `--footprint` prints the floor the camera sees and where the tape lines come into view, for choosing the mount.
+- After its first 60 s, `camera_model` writes how long each frame took (mean, p99, max) to `ros2_ws/runs/benchmarks/` on the host.
+
 ## Reset position
 
 Puts the car back on the track after a crash or to start again from a known place.
