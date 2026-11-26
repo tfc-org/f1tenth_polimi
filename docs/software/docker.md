@@ -18,7 +18,7 @@ Pick the service for your machine. `arm` is used in the examples; replace it wit
 - Bind mounts: `ros2_ws/src`, `ros2_ws/config`, `ros2_ws/maps`, `ros2_ws/runs` (the simulator's lap CSVs), `docker/ros/bashrc_polimi` (read-only, over the copy baked into the image), and `docker/ros/python3-ros` (read-only, see [PyCharm interpreter](#pycharm-interpreter)).
 - `build/`, `install/`, `log/` live in Docker volumes named after the distro (`build_jazzy_arm`, …), not in the repo: build output stays out of git and is kept between container restarts.
 - Ports bind to `127.0.0.1` only.
-- Each worktree is its own compose project (named after its folder), with its own containers and build volumes. To run a second simulator from another worktree, give it another Foxglove port: `FOXGLOVE_PORT=8766 make sim`.
+- Each worktree is its own compose project (named after its folder), with its own containers and build volumes. To run a second simulator from another worktree, give it another Foxglove port: `FOXGLOVE_PORT=8766 make sim`. The port is the same inside the container: `foxglove_bridge` listens on it, so every log line names the port to connect to.
 
 ## Everyday commands
 
