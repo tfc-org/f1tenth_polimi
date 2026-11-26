@@ -23,5 +23,5 @@ cb() {
 simcar() {
     local map="spielberg"
     if [ $# -gt 0 ] && [[ "$1" != *":="* ]]; then map="$1"; shift; fi
-    ros2 launch polimi_sim sim_car.launch.py map:="$map" config_dir:="$HOME/ws/config" "$@"
+    ros2 launch polimi_sim sim_car.launch.py map:="$map" config_dir:="$HOME/ws/config" foxglove_port:="${FOXGLOVE_PORT:-8765}" "$@"
 }
