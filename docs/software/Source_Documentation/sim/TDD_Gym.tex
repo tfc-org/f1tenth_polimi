@@ -140,7 +140,7 @@ The stack is a black box: it talks to the car and to the simulator through the s
   \draw[http] (rst.north) -- node[lbl, left] {\code{/sim/initialpose}} (gym.south);
   \draw[http] (gym.east) -- (17.35,-10.35) -- node[lbl, pos=0.3, fill=white, rotate=90] {truth pose} (17.35,0.0) -- (sscan.east);
   \draw[http] (17.35,-1.1) -- (sodom.east);
-  \draw[http, plan] (17.35,-2.2) -- (scam.east);
+  \draw[http] (17.35,-2.2) -- (scam.east);
   \draw[http, defer] (17.35,-3.3) -- (simu.east);
 
   % legend
